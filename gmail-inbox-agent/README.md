@@ -87,7 +87,7 @@ data/gmail_credentials.json
 
 ```bash
 uv sync --extra dev
-uv run gmail-agent --auth-check
+uv run gmail-inbox-agent --auth-check
 ```
 
 ## Running Locally
@@ -95,19 +95,19 @@ uv run gmail-agent --auth-check
 Dry-run first:
 
 ```bash
-uv run gmail-agent --dry-run
+uv run gmail-inbox-agent --dry-run
 ```
 
 Limit the run:
 
 ```bash
-uv run gmail-agent --dry-run --max-messages 10
+uv run gmail-inbox-agent --dry-run --max-messages 10
 ```
 
 Apply changes only when ready:
 
 ```bash
-uv run gmail-agent --apply --max-messages 10
+uv run gmail-inbox-agent --apply --max-messages 10
 ```
 
 Or with Task:
@@ -150,7 +150,7 @@ brandocomando8/gmail-inbox-agent:latest
 SQLite remains the default:
 
 ```bash
-docker compose run --rm gmail-agent --dry-run --max-messages 10
+docker compose run --rm gmail-inbox-agent --dry-run --max-messages 10
 ```
 
 Optional Postgres memory backend:
@@ -178,7 +178,7 @@ This repo is intended to be public. Do not commit local credentials, OAuth token
 Local:
 
 ```cron
-0 7 * * * cd /path/to/gmail-inbox-agent && uv run gmail-agent --apply
+0 7 * * * cd /path/to/gmail-inbox-agent && uv run gmail-inbox-agent --apply
 ```
 
 Docker Compose with Postgres:

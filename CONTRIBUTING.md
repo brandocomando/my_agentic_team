@@ -10,7 +10,7 @@ Thanks for checking out this repo. It is both a working automation project and a
 
 ## Local Setup
 
-For the Gmail agent:
+For the Gmail Inbox Agent:
 
 ```bash
 cd gmail-inbox-agent
@@ -41,7 +41,7 @@ If Task is not installed, use the equivalent `uv`, `docker`, or `docker compose`
 
 ## Safety Expectations
 
-The Gmail agent must stay conservative:
+The Gmail Inbox Agent must stay conservative:
 
 - Default to dry-run.
 - Never delete emails.
@@ -67,10 +67,10 @@ Update docs when behavior changes:
 Use conventional commits so semantic-release can version the agent:
 
 ```text
-feat(gmail-agent): add deterministic rules engine
-fix(gmail-agent): skip summary emails
-docs(gmail-agent): expand Docker setup
-ci(gmail-agent): publish Docker image
+feat(gmail-inbox-agent): add deterministic rules engine
+fix(gmail-inbox-agent): skip summary emails
+docs(gmail-inbox-agent): expand Docker setup
+chore(gmail-inbox-agent): publish Docker image
 ```
 
 Release behavior:

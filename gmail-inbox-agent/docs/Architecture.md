@@ -8,7 +8,7 @@ The original implementation spec lives in [Initial_Plan.md](./Initial_Plan.md). 
 
 ```mermaid
 flowchart TD
-    Cron["cron / local scheduler"] --> CLI["uv run gmail-agent"]
+    Cron["cron / local scheduler"] --> CLI["uv run gmail-inbox-agent"]
     CLI --> Graph["LangGraph workflow"]
     Graph --> GmailFetch["Gmail API: fetch inbox"]
     Graph --> MemoryRead["SQLite memory: reviewed IDs"]
@@ -47,13 +47,13 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant User as Local User
-    participant CLI as gmail-agent CLI
+    participant CLI as gmail-inbox-agent CLI
     participant Graph as LangGraph
     participant Gmail as Gmail API
     participant Memory as SQLite Memory
     participant LLM as LLM Provider
 
-    User->>CLI: uv run gmail-agent --dry-run or --apply
+    User->>CLI: uv run gmail-inbox-agent --dry-run or --apply
     CLI->>Graph: Start AgentState
     Graph->>Gmail: Authenticate with OAuth
     Graph->>Gmail: Fetch in:inbox -label:"ai-reviewed"
@@ -78,11 +78,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User as Local User
-    participant CLI as gmail-agent CLI
+    participant CLI as gmail-inbox-agent CLI
     participant Browser as Browser OAuth
     participant Gmail as Gmail API
 
-    User->>CLI: uv run gmail-agent --auth-check
+    User->>CLI: uv run gmail-inbox-agent --auth-check
     CLI->>Browser: Open OAuth approval when token is missing
     Browser-->>CLI: OAuth grant
     CLI->>Gmail: Request Gmail profile
@@ -143,7 +143,7 @@ flowchart TB
 Summary report subjects include date and time so multiple runs per day are easy to distinguish:
 
 ```text
-Gmail Agent Summary - YYYY-MM-DD HH:MM:SS TZ
+Gmail Inbox Agent Summary - YYYY-MM-DD HH:MM:SS TZ
 ```
 
 Dry runs print the summary to the console. Apply runs send the summary email only when at least one new email was processed.
@@ -185,9 +185,9 @@ The agent can run directly with `uv`, as a Docker one-shot container, or through
 
 ```mermaid
 flowchart TD
-    Local["uv run gmail-agent"] --> Agent["Gmail Inbox Agent"]
+    Local["uv run gmail-inbox-agent"] --> Agent["Gmail Inbox Agent"]
     Docker["docker run gmail-inbox-agent"] --> Agent
-    Compose["docker compose run gmail-agent"] --> Agent
+    Compose["docker compose run gmail-inbox-agent"] --> Agent
     Agent --> SQLite[("SQLite data/memory.sqlite")]
     Agent --> Postgres[("Optional Postgres")]
     Agent --> Gmail["Gmail API"]
@@ -198,9 +198,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Push["Push to main"] --> Paths{"gmail-inbox-agent changed?"}
-    Paths -->|yes| Tests["uv pytest"]
-    Tests --> Release["semantic-release"]
+    PR["Pull request"] --> Tests["uv pytest"]
+    Push["Push to main"] --> Release["semantic-release"]
     Release --> Docker{"new version?"}
     Docker -->|yes| Hub["Docker Hub: latest, semver, sha"]
 ```

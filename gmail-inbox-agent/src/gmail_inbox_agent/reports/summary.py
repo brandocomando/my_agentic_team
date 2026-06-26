@@ -6,7 +6,9 @@ from datetime import datetime
 from gmail_inbox_agent.gmail.actions import labels_for, should_archive
 from gmail_inbox_agent.models import AgentState, ProcessedEmail
 
-SUMMARY_SUBJECT_PREFIX = "Gmail Agent Summary"
+SUMMARY_SUBJECT_PREFIX = "Gmail Inbox Agent Summary"
+# Keep old summaries out of the inbox scan after the project naming cleanup.
+LEGACY_SUMMARY_SUBJECT_PREFIXES = ("Gmail Agent Summary",)
 
 
 def summary_subject(run_at: datetime | None = None) -> str:
@@ -22,7 +24,7 @@ def build_summary(state: AgentState) -> str:
     label_counts = Counter(label for item in processed for label in labels_for(item))
 
     lines = [
-        "# Gmail Agent Summary",
+        "# Gmail Inbox Agent Summary",
         "",
         f"Processed: {len(processed)}",
         f"Archived: {len(archived)}",
@@ -70,7 +72,9 @@ def build_summary(state: AgentState) -> str:
 
 
 def is_summary_email_subject(subject: str) -> bool:
-    return subject.strip().lower().startswith(SUMMARY_SUBJECT_PREFIX.lower())
+    normalized = subject.strip().lower()
+    prefixes = (SUMMARY_SUBJECT_PREFIX, *LEGACY_SUMMARY_SUBJECT_PREFIXES)
+    return any(normalized.startswith(prefix.lower()) for prefix in prefixes)
 
 
 def _highlight_lines(item: ProcessedEmail) -> list[str]:

@@ -73,7 +73,7 @@ brandocomando8/gmail-inbox-agent:latest
 SQLite remains the default.
 
 ```bash
-docker compose run --rm gmail-agent --dry-run --max-messages 10
+docker compose run --rm gmail-inbox-agent --dry-run --max-messages 10
 ```
 
 ## Docker Compose With Postgres
@@ -81,7 +81,7 @@ docker compose run --rm gmail-agent --dry-run --max-messages 10
 Postgres is optional and stores reviewed-message memory in a Docker named volume.
 
 ```bash
-docker compose --profile postgres run --rm gmail-agent-postgres --dry-run --max-messages 10
+docker compose --profile postgres run --rm gmail-inbox-agent-postgres --dry-run --max-messages 10
 docker compose --profile postgres down
 ```
 
@@ -95,7 +95,7 @@ task compose:postgres:apply -- --max-messages 1
 The Postgres service uses:
 
 ```text
-postgresql://gmail_agent:gmail_agent@postgres:5432/gmail_agent
+postgresql://gmail_inbox_agent:gmail_inbox_agent@postgres:5432/gmail_inbox_agent
 ```
 
 inside the Compose network. Do not use this simple credential pattern for a shared or hosted production database.

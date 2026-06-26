@@ -20,10 +20,10 @@ flowchart TD
     C --> D["Create OAuth desktop client"]
     D --> E["Download credentials JSON"]
     E --> F["Save as data/gmail_credentials.json"]
-    F --> G["Run uv run gmail-agent --auth-check"]
+    F --> G["Run uv run gmail-inbox-agent --auth-check"]
     G --> H["Browser OAuth approval"]
     H --> I["Token saved as data/gmail_token.json"]
-    I --> J["Run uv run gmail-agent --dry-run"]
+    I --> J["Run uv run gmail-inbox-agent --dry-run"]
 ```
 
 ## Google Cloud Steps
@@ -68,7 +68,7 @@ MAX_MESSAGES_PER_RUN=25
 From `gmail-inbox-agent/`, run:
 
 ```bash
-uv run gmail-agent --auth-check
+uv run gmail-inbox-agent --auth-check
 ```
 
 The first run opens a browser for Google OAuth approval. After approval, the agent writes:
@@ -84,7 +84,7 @@ Do not commit this file.
 Once auth works, run:
 
 ```bash
-uv run gmail-agent --dry-run --max-messages 10
+uv run gmail-inbox-agent --dry-run --max-messages 10
 ```
 
 Dry-run mode can fetch and classify inbox messages, but it does not:
@@ -99,7 +99,7 @@ Dry-run mode can fetch and classify inbox messages, but it does not:
 Only after reviewing dry-run output, run:
 
 ```bash
-uv run gmail-agent --apply --max-messages 1
+uv run gmail-inbox-agent --apply --max-messages 1
 ```
 
 The agent still never deletes messages. Archive means removing the Gmail `INBOX` label.

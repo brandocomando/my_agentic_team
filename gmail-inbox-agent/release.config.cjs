@@ -13,7 +13,6 @@ module.exports = {
           { type: "docs", release: "patch" },
           { type: "test", release: "patch" },
           { type: "build", release: "patch" },
-          { type: "ci", release: "patch" },
           { type: "chore", release: "patch" },
           { breaking: true, release: "major" },
         ],

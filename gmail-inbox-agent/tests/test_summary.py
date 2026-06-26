@@ -68,9 +68,9 @@ def test_summary_report_includes_actions() -> None:
 def test_summary_subject_includes_timestamp() -> None:
     subject = summary_subject(datetime(2026, 6, 26, 9, 30, 15, tzinfo=UTC))
 
-    assert subject == "Gmail Agent Summary - 2026-06-26 09:30:15 UTC"
+    assert subject == "Gmail Inbox Agent Summary - 2026-06-26 09:30:15 UTC"
 
 
 def test_summary_email_subject_detection() -> None:
-    assert is_summary_email_subject("Gmail Agent Summary - 2026-06-26 09:30:15 PDT") is True
-    assert is_summary_email_subject("Re: Gmail Agent Summary - 2026-06-26") is False
+    assert is_summary_email_subject("Gmail Inbox Agent Summary - 2026-06-26 09:30:15 PDT") is True
+    assert is_summary_email_subject("Re: Gmail Inbox Agent Summary - 2026-06-26") is False

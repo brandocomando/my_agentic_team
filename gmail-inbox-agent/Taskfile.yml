@@ -17,22 +17,22 @@ tasks:
   run:
     desc: Run the agent locally; pass args with `--`
     cmds:
-      - uv run gmail-agent {{.CLI_ARGS}}
+      - uv run gmail-inbox-agent {{.CLI_ARGS}}
 
   dry-run:
     desc: Run a local dry-run
     cmds:
-      - uv run gmail-agent --dry-run {{.CLI_ARGS}}
+      - uv run gmail-inbox-agent --dry-run {{.CLI_ARGS}}
 
   apply:
     desc: Run locally and apply Gmail actions
     cmds:
-      - uv run gmail-agent --apply {{.CLI_ARGS}}
+      - uv run gmail-inbox-agent --apply {{.CLI_ARGS}}
 
   auth-check:
     desc: Check Gmail OAuth access
     cmds:
-      - uv run gmail-agent --auth-check
+      - uv run gmail-inbox-agent --auth-check
 
   docker:build:
     desc: Build the Docker image
@@ -54,12 +54,12 @@ tasks:
   compose:run:
     desc: Run once via Docker Compose with SQLite host-mounted data
     cmds:
-      - docker compose run --rm gmail-agent {{.CLI_ARGS}}
+      - docker compose run --rm gmail-inbox-agent {{.CLI_ARGS}}
 
   compose:postgres:run:
     desc: Start Postgres, run once, then stop the compose stack
     cmds:
-      - docker compose --profile postgres run --rm gmail-agent-postgres {{.CLI_ARGS}}
+      - docker compose --profile postgres run --rm gmail-inbox-agent-postgres {{.CLI_ARGS}}
       - docker compose --profile postgres down
 
   compose:postgres:dry-run:

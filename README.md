@@ -23,7 +23,7 @@ The active project is the [Gmail Inbox Agent](gmail-inbox-agent/README.md).
 
 Useful links:
 
-- [Gmail agent setup and usage](gmail-inbox-agent/README.md)
+- [Gmail Inbox Agent setup and usage](gmail-inbox-agent/README.md)
 - [Gmail OAuth setup](gmail-inbox-agent/docs/Gmail_OAuth_Setup.md)
 - [Docker and Compose](gmail-inbox-agent/docs/Docker.md)
 - [Architecture](gmail-inbox-agent/docs/Architecture.md)

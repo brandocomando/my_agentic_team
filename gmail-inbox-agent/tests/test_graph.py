@@ -71,7 +71,7 @@ def test_agent_summary_emails_are_skipped(tmp_path: Path) -> None:
             EmailMessage(
                 gmail_message_id="m1",
                 thread_id="t1",
-                subject="Gmail Agent Summary - 2026-06-26 09:30:15 PDT",
+                subject="Gmail Inbox Agent Summary - 2026-06-26 09:30:15 PDT",
                 from_email="me@example.com",
                 snippet="Processed: 1",
             )

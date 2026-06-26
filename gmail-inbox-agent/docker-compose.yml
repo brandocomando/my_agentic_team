@@ -10,12 +10,12 @@ x-agent-base: &agent-base
     - "host.docker.internal:host-gateway"
 
 services:
-  gmail-agent:
+  gmail-inbox-agent:
     <<: *agent-base
     environment:
       OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
-  gmail-agent-postgres:
+  gmail-inbox-agent-postgres:
     <<: *agent-base
     profiles:
       - postgres
@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     environment:
       MEMORY_BACKEND: postgres
-      DATABASE_URL: postgresql://gmail_agent:gmail_agent@postgres:5432/gmail_agent
+      DATABASE_URL: postgresql://gmail_inbox_agent:gmail_inbox_agent@postgres:5432/gmail_inbox_agent
       OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
   postgres:
@@ -32,11 +32,11 @@ services:
     profiles:
       - postgres
     environment:
-      POSTGRES_DB: gmail_agent
-      POSTGRES_USER: gmail_agent
-      POSTGRES_PASSWORD: gmail_agent
+      POSTGRES_DB: gmail_inbox_agent
+      POSTGRES_USER: gmail_inbox_agent
+      POSTGRES_PASSWORD: gmail_inbox_agent
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gmail_agent -d gmail_agent"]
+      test: ["CMD-SHELL", "pg_isready -U gmail_inbox_agent -d gmail_inbox_agent"]
       interval: 5s
       timeout: 5s
       retries: 10

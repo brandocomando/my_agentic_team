@@ -14,4 +14,4 @@ COPY src ./src
 
 RUN uv sync --frozen --no-dev
 
-ENTRYPOINT ["/app/.venv/bin/gmail-agent"]
+ENTRYPOINT ["/app/.venv/bin/gmail-inbox-agent"]

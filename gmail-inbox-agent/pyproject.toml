@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-gmail-agent = "gmail_inbox_agent.main:main"
+gmail-inbox-agent = "gmail_inbox_agent.main:main"
 
 [build-system]
 requires = ["uv_build>=0.8.0,<0.9.0"]
