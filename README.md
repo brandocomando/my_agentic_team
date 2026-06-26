@@ -2,4 +2,4 @@
 A compilation of agents I use to automate my life
 
 # Agents:
-- Email Agent
+- Email Agent - status: Testing
