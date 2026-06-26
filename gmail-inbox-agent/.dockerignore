@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.mypy_cache/
+data/
+logs/
+config/rules.toml
+.git/

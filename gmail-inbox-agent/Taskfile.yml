@@ -1,0 +1,73 @@
+version: "3"
+
+vars:
+  IMAGE: gmail-inbox-agent:local
+
+tasks:
+  sync:
+    desc: Install dependencies
+    cmds:
+      - uv sync --extra dev
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run --extra dev pytest
+
+  run:
+    desc: Run the agent locally; pass args with `--`
+    cmds:
+      - uv run gmail-agent {{.CLI_ARGS}}
+
+  dry-run:
+    desc: Run a local dry-run
+    cmds:
+      - uv run gmail-agent --dry-run {{.CLI_ARGS}}
+
+  apply:
+    desc: Run locally and apply Gmail actions
+    cmds:
+      - uv run gmail-agent --apply {{.CLI_ARGS}}
+
+  auth-check:
+    desc: Check Gmail OAuth access
+    cmds:
+      - uv run gmail-agent --auth-check
+
+  docker:build:
+    desc: Build the Docker image
+    cmds:
+      - docker build -t {{.IMAGE}} .
+
+  docker:run:
+    desc: Run once via Docker with host-mounted config and data
+    deps:
+      - docker:build
+    cmds:
+      - docker run --rm --env-file .env -e OLLAMA_BASE_URL=${DOCKER_OLLAMA_BASE_URL:-http://host.docker.internal:11434} --add-host=host.docker.internal:host-gateway -v "$PWD/data:/app/data" -v "$PWD/config:/app/config" {{.IMAGE}} {{.CLI_ARGS}}
+
+  docker:dry-run:
+    desc: Run a Docker dry-run
+    cmds:
+      - task docker:run -- --dry-run {{.CLI_ARGS}}
+
+  compose:run:
+    desc: Run once via Docker Compose with SQLite host-mounted data
+    cmds:
+      - docker compose run --rm gmail-agent {{.CLI_ARGS}}
+
+  compose:postgres:run:
+    desc: Start Postgres, run once, then stop the compose stack
+    cmds:
+      - docker compose --profile postgres run --rm gmail-agent-postgres {{.CLI_ARGS}}
+      - docker compose --profile postgres down
+
+  compose:postgres:dry-run:
+    desc: Run once via Docker Compose and Postgres in dry-run mode
+    cmds:
+      - task compose:postgres:run -- --dry-run {{.CLI_ARGS}}
+
+  compose:postgres:apply:
+    desc: Run once via Docker Compose and Postgres in apply mode
+    cmds:
+      - task compose:postgres:run -- --apply {{.CLI_ARGS}}

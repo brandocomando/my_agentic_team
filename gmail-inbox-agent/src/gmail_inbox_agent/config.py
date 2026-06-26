@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     )
     gmail_token_path: Path = Field(default=Path("./data/gmail_token.json"), alias="GMAIL_TOKEN_PATH")
     memory_db_path: Path = Field(default=Path("./data/memory.sqlite"), alias="MEMORY_DB_PATH")
+    memory_backend: Literal["sqlite", "postgres"] = Field(default="sqlite", alias="MEMORY_BACKEND")
+    database_url: str = Field(default="", alias="DATABASE_URL")
     classification_rules_path: Path = Field(default=Path("./config/rules.toml"), alias="CLASSIFICATION_RULES_PATH")
     user_email: str = Field(default="", alias="USER_EMAIL")
     dry_run: bool = Field(default=True, alias="DRY_RUN")

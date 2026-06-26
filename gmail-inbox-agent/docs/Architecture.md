@@ -179,4 +179,19 @@ When changing the agent, update this doc if the change affects:
 - Scheduling, containers, GitHub Actions, or deployment.
 - OAuth setup or authentication behavior.
 
+## Runtime Options
+
+The agent can run directly with `uv`, as a Docker one-shot container, or through Docker Compose.
+
+```mermaid
+flowchart TD
+    Local["uv run gmail-agent"] --> Agent["Gmail Inbox Agent"]
+    Docker["docker run gmail-inbox-agent"] --> Agent
+    Compose["docker compose run gmail-agent"] --> Agent
+    Agent --> SQLite[("SQLite data/memory.sqlite")]
+    Agent --> Postgres[("Optional Postgres")]
+    Agent --> Gmail["Gmail API"]
+    Agent --> LLM["OpenAI or host Ollama"]
+```
+
 Keep implementation plans, milestone notes, and decision history under `docs/` so the public repo shows both the product and the engineering process behind it.
