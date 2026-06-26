@@ -1,0 +1,33 @@
+[project]
+name = "gmail-inbox-agent"
+version = "0.1.0"
+description = "Local scheduled Gmail inbox triage agent"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "google-api-python-client>=2.176.0",
+  "google-auth-httplib2>=0.2.0",
+  "google-auth-oauthlib>=1.2.2",
+  "langgraph>=0.5.0",
+  "openai>=1.93.0",
+  "pydantic>=2.11.0",
+  "pydantic-settings>=2.10.0",
+  "python-dotenv>=1.1.0",
+  "rich>=14.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.0",
+]
+
+[project.scripts]
+gmail-agent = "gmail_inbox_agent.main:main"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
