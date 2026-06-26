@@ -48,6 +48,8 @@ task docker:run -- --dry-run --max-messages 10
 
 ## Direct Docker
 
+Build locally:
+
 ```bash
 docker build -t gmail-inbox-agent:local .
 docker run --rm \
@@ -58,6 +60,12 @@ docker run --rm \
   -v "$PWD/config:/app/config" \
   gmail-inbox-agent:local \
   --dry-run --max-messages 10
+```
+
+After the GitHub release workflow publishes to Docker Hub, replace `gmail-inbox-agent:local` with your published image, such as:
+
+```text
+brandocomando8/gmail-inbox-agent:latest
 ```
 
 ## Docker Compose With SQLite

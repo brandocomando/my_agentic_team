@@ -194,4 +194,15 @@ flowchart TD
     Agent --> LLM["OpenAI or host Ollama"]
 ```
 
+## Release Pipeline
+
+```mermaid
+flowchart TD
+    Push["Push to main"] --> Paths{"gmail-inbox-agent changed?"}
+    Paths -->|yes| Tests["uv pytest"]
+    Tests --> Release["semantic-release"]
+    Release --> Docker{"new version?"}
+    Docker -->|yes| Hub["Docker Hub: latest, semver, sha"]
+```
+
 Keep implementation plans, milestone notes, and decision history under `docs/` so the public repo shows both the product and the engineering process behind it.

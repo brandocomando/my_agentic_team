@@ -1,56 +1,38 @@
-# my_agentic_team
-A compilation of agents I use to automate my life
+# My Agentic Team
 
-# Agents:
-- Email Agent - status: Testing
+A public, practical collection of local-first agents I use to automate parts of my life. The goal is to show real agent engineering: safe defaults, local credentials, documented architecture, tests, Docker, release automation, and room for future agents.
 
-  Features:
-    - Labels/archives emails
-    - Summarizes and notifies of important emails
+## Current Agents
 
-  [docs](gmail-inbox-agent/docs)
+| Agent | Status | Description |
+| --- | --- | --- |
+| [Gmail Inbox Agent](gmail-inbox-agent/README.md) | Testing | Reviews Gmail inbox messages, labels important mail, archives low-value mail, and sends a summary report. |
+| GitHub Agent | Not started | Planned repo analysis for vulnerabilities, bugs, and maintenance tasks. |
+| Calendar Agent | Not started | Planned calendar triage and scheduling support. |
+| Finance/Expenses Agent | Not started | Planned expense and finance workflow automation. |
+| AWS Agent | Not started | Planned cloud/account operations assistant. |
+| Job/Consulting Search Agent | Not started | Planned lead tracking and opportunity search. |
+| Paid Survey/Expert Networks Agent | Not started | Planned opportunity screening. |
+| Travel Planner | Not started | Planned itinerary and logistics assistant. |
+| Learning Assistant | Not started | Planned study/research support. |
+| Idea Tracker | Not started | Planned capture and follow-up agent. |
 
-- GitHub Agent - status: Not started
+## Start Here
 
-  Features:
-    - Analyzes my github repos for vulnerabilities/bugs
+The active project is the [Gmail Inbox Agent](gmail-inbox-agent/README.md).
 
-- Calendar Agent - status: Not started
+Useful links:
 
-  Features:
-    - TBD
+- [Gmail agent setup and usage](gmail-inbox-agent/README.md)
+- [Gmail OAuth setup](gmail-inbox-agent/docs/Gmail_OAuth_Setup.md)
+- [Docker and Compose](gmail-inbox-agent/docs/Docker.md)
+- [Architecture](gmail-inbox-agent/docs/Architecture.md)
+- [Contributing](CONTRIBUTING.md)
 
-- Finance/Expenses Agent - status: Not started
+## Public Repo Safety
 
-  Features:
-    - TBD
+This repo is designed to be public. Local secrets, OAuth tokens, runtime memory, private rules, logs, virtualenvs, and cache files are ignored. Before pushing, always check:
 
-- AWS Agent - status: Not started
-
-  Features:
-    - TBD
-
-- Job/Consulting Search Agent - status: Not started
-
-  Features:
-    - TBD
-
-- Paid Survey/Expert Networks Agent - status: Not started
-
-  Features:
-    - TBD
-
-- Travel Planner - status: Not started
-
-  Features:
-    - TBD
-
-- Learning Assistant - status: Not started
-
-  Features:
-    - TBD
-
-- Idea Tracker - status: Not started
-
-  Features:
-    - TBD
+```bash
+git status --short --ignored
+```
