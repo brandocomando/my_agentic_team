@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local agent credentials, OAuth tokens, and runtime memory
+**/.env
+**/.env.*
+!**/.env.example
+**/data/*.json
+**/data/*.sqlite
+**/data/*.sqlite-*
+**/data/*.db
+**/data/*.db-*
+**/data/gmail_credentials*
+**/data/gmail_token*
+**/logs/
