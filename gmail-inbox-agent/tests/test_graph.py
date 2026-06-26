@@ -9,7 +9,7 @@ class MutatingClient:
     def __init__(self) -> None:
         self.called = False
 
-    def modify_message(self, *args, **kwargs) -> None:
+    def modify_thread(self, *args, **kwargs) -> None:
         self.called = True
 
 
@@ -81,6 +81,40 @@ def test_agent_summary_emails_are_skipped(tmp_path: Path) -> None:
     result = filter_unreviewed_messages(state)
 
     assert result.unreviewed_messages == []
+
+
+def test_messages_in_same_thread_are_processed_once(tmp_path: Path) -> None:
+    memory = ReviewedMessageStore(tmp_path / "memory.sqlite")
+    state = AgentState(
+        memory=memory,
+        messages=[
+            EmailMessage(
+                gmail_message_id="m1",
+                thread_id="t1",
+                subject="Re: Migration",
+                from_email="a@example.com",
+                snippet="First message",
+            ),
+            EmailMessage(
+                gmail_message_id="m2",
+                thread_id="t1",
+                subject="Re: Migration",
+                from_email="b@example.com",
+                snippet="Second message",
+            ),
+            EmailMessage(
+                gmail_message_id="m3",
+                thread_id="t2",
+                subject="Other",
+                from_email="c@example.com",
+                snippet="Separate thread",
+            ),
+        ],
+    )
+
+    result = filter_unreviewed_messages(state)
+
+    assert [message.gmail_message_id for message in result.unreviewed_messages] == ["m1", "m3"]
 
 
 def test_dry_run_does_not_call_gmail_mutations() -> None:

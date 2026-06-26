@@ -65,11 +65,11 @@ class GmailClient:
         self._label_cache[label_name] = created["id"]
         return created["id"]
 
-    def modify_message(self, message_id: str, add_label_names: list[str], remove_label_ids: list[str]) -> None:
+    def modify_thread(self, thread_id: str, add_label_names: list[str], remove_label_ids: list[str]) -> None:
         add_label_ids = [self.ensure_label(label_name) for label_name in add_label_names]
-        self.service.users().messages().modify(
+        self.service.users().threads().modify(
             userId="me",
-            id=message_id,
+            id=thread_id,
             body={"addLabelIds": add_label_ids, "removeLabelIds": remove_label_ids},
         ).execute()
 

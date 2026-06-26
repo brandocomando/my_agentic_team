@@ -78,6 +78,7 @@ def fetch_inbox_messages(state: AgentState) -> AgentState:
 
 def filter_unreviewed_messages(state: AgentState) -> AgentState:
     unreviewed = []
+    seen_threads: set[str] = set()
     for message in state.messages:
         if is_summary_email_subject(message.subject):
             continue
@@ -85,6 +86,10 @@ def filter_unreviewed_messages(state: AgentState) -> AgentState:
             continue
         if state.memory and state.memory.is_reviewed(message.gmail_message_id):
             continue
+        thread_key = message.thread_id or message.gmail_message_id
+        if thread_key in seen_threads:
+            continue
+        seen_threads.add(thread_key)
         unreviewed.append(message)
     state.unreviewed_messages = unreviewed
     return state

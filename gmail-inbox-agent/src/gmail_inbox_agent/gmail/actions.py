@@ -9,17 +9,17 @@ MIN_ARCHIVE_CONFIDENCE = 0.7
 
 def planned_actions(processed: ProcessedEmail) -> list[str]:
     classification = processed.classification
-    actions = [f"apply labels: {', '.join(labels_for(processed))}"]
+    actions = [f"apply labels to thread: {', '.join(labels_for(processed))}"]
     if should_archive(processed):
-        actions.append("archive: remove INBOX label")
+        actions.append("archive thread: remove INBOX label")
     return actions
 
 
 def apply_actions(gmail_client: object, processed: ProcessedEmail) -> list[str]:
     labels = labels_for(processed)
     remove_labels = ["INBOX"] if should_archive(processed) else []
-    gmail_client.modify_message(
-        processed.message.gmail_message_id,
+    gmail_client.modify_thread(
+        processed.message.thread_id,
         add_label_names=labels,
         remove_label_ids=remove_labels,
     )

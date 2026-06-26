@@ -1,6 +1,6 @@
 # Gmail Inbox Agent
 
-A local Python agent that reviews Gmail inbox messages, classifies them with an LLM, applies labels, archives low-value mail, records local memory, and produces a summary.
+A local Python agent that reviews Gmail inbox threads, classifies them with an LLM, applies labels, archives low-value mail, records local memory, and produces a summary.
 
 It is designed to run safely from your machine, either directly with `uv`, with `docker run`, or through Docker Compose for scheduled one-shot runs.
 
@@ -18,10 +18,11 @@ It is designed to run safely from your machine, either directly with `uv`, with 
 ## What It Does
 
 - Fetches only Gmail inbox messages.
+- Processes each Gmail thread once per run.
 - Skips messages already reviewed by the agent.
-- Classifies each message with OpenAI, Ollama, or conservative fallback logic.
-- Applies lowercase labels such as `ai-reviewed`, `ai-work`, and `ai-low-priority`.
-- Archives low-value messages by removing the Gmail `INBOX` label.
+- Classifies a representative message from each thread with OpenAI, Ollama, or conservative fallback logic.
+- Applies lowercase labels such as `ai-reviewed`, `ai-work`, and `ai-low-priority` to the Gmail thread.
+- Archives low-value threads by removing the Gmail `INBOX` label.
 - Stores reviewed message IDs in SQLite or optional Postgres.
 - Sends a summary email only when new messages were processed.
 
