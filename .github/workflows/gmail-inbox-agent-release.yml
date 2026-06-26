@@ -1,4 +1,4 @@
-name: Gmail Agent Release
+name: Gmail Inbox Agent Release
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - main
     paths:
       - "gmail-inbox-agent/**"
-      - ".github/workflows/gmail-agent-release.yml"
+      - ".github/workflows/gmail-inbox-agent-release.yml"
   pull_request:
     paths:
       - "gmail-inbox-agent/**"
-      - ".github/workflows/gmail-agent-release.yml"
+      - ".github/workflows/gmail-inbox-agent-release.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: gmail-agent-release-${{ github.ref }}
+  group: gmail-inbox-agent-release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -28,7 +28,7 @@ env:
 
 jobs:
   test:
-    name: Test Gmail Agent
+    name: Test Gmail Inbox Agent
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
@@ -63,7 +63,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Release Gmail Agent
+      - name: Release Gmail Inbox Agent
         id: semantic
         uses: cycjimmy/semantic-release-action@v6
         with:

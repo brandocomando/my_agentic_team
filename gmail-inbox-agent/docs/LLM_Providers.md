@@ -52,7 +52,7 @@ ollama pull llama3.1:8b
 Then run:
 
 ```bash
-uv run gmail-agent --dry-run --max-messages 10
+uv run gmail-inbox-agent --dry-run --max-messages 10
 ```
 
 The agent calls Ollama's `/api/generate` endpoint with:
@@ -65,7 +65,7 @@ The agent calls Ollama's `/api/generate` endpoint with:
 
 ```mermaid
 flowchart TD
-    A["gmail-agent"] --> B["Load .env"]
+    A["gmail-inbox-agent"] --> B["Load .env"]
     B --> C{"LLM_PROVIDER"}
     C -->|openai| D["OpenAI Responses API"]
     C -->|ollama| E["Ollama /api/generate"]

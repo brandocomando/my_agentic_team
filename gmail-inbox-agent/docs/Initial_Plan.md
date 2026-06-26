@@ -17,7 +17,7 @@ Scheduled run:
 ```text
 cron
   ↓
-python gmail_agent
+python gmail-inbox-agent
   ↓
 fetch Gmail inbox messages
   ↓
@@ -405,13 +405,13 @@ Send an email to `USER_EMAIL`.
 Subject:
 
 ```text
-Gmail Agent Summary — YYYY-MM-DD
+Gmail Inbox Agent Summary — YYYY-MM-DD
 ```
 
 Body format:
 
 ```md
-# Gmail Agent Summary
+# Gmail Inbox Agent Summary
 
 Processed: 18
 Archived: 9
@@ -452,10 +452,10 @@ Use argparse or Typer.
 Required:
 
 ```bash
-uv run gmail-agent
-uv run gmail-agent --dry-run
-uv run gmail-agent --apply
-uv run gmail-agent --max-messages 10
+uv run gmail-inbox-agent
+uv run gmail-inbox-agent --dry-run
+uv run gmail-inbox-agent --apply
+uv run gmail-inbox-agent --max-messages 10
 ```
 
 Default should be dry-run unless `--apply` is passed.
@@ -512,7 +512,7 @@ Build:
 Acceptance:
 
 ```bash
-uv run gmail-agent --dry-run
+uv run gmail-inbox-agent --dry-run
 ```
 
 runs without Gmail integration.
@@ -598,7 +598,7 @@ Document cron setup.
 Example:
 
 ```bash
-0 8 * * * cd /path/to/gmail-inbox-agent && uv run gmail-agent --apply
+0 8 * * * cd /path/to/gmail-inbox-agent && uv run gmail-inbox-agent --apply
 ```
 
 Recommended initial schedule:
@@ -631,7 +631,7 @@ Recommended first behavior:
 
 The project is complete when:
 
-1. It runs locally with `uv run gmail-agent`.
+1. It runs locally with `uv run gmail-inbox-agent`.
 2. It authenticates with Gmail.
 3. It only reads Inbox messages.
 4. It skips previously reviewed emails.

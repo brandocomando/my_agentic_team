@@ -7,7 +7,7 @@ The Gmail Inbox Agent uses GitHub Actions, semantic-release, and Docker Buildx t
 The workflow runs when changes land on `main` under:
 
 - `gmail-inbox-agent/**`
-- `.github/workflows/gmail-agent-release.yml`
+- `.github/workflows/gmail-inbox-agent-release.yml`
 
 Pull requests run tests. Pushes to `main` run semantic-release and publish Docker images when a new version is created.
 
@@ -28,19 +28,18 @@ Conventional commit types control the version bump:
 - `docs:` -> patch
 - `test:` -> patch
 - `build:` -> patch
-- `ci:` -> patch
 - `chore:` -> patch
 - breaking changes -> major
 
 Example commits:
 
 ```text
-feat(gmail-agent): add deterministic rules engine
-fix(gmail-agent): skip agent summary emails
-ci(gmail-agent): publish Docker image
+feat(gmail-inbox-agent): add deterministic rules engine
+fix(gmail-inbox-agent): skip agent summary emails
+chore(gmail-inbox-agent): publish Docker image
 ```
 
-Semantic-release only publishes when it can infer a release from commit messages. Use one of the conventional commit types above for Gmail agent changes that should publish a new Docker image.
+Semantic-release only publishes when it can infer a release from commit messages. Use one of the conventional commit types above for Gmail Inbox Agent changes that should publish a new Docker image.
 
 ## Docker Hub Tags
 
