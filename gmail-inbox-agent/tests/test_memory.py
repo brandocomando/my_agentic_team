@@ -17,7 +17,7 @@ def test_sqlite_memory_records_reviewed_messages(tmp_path) -> None:
             category="other",
             should_archive=False,
             should_highlight=False,
-            labels_to_apply=["AI Reviewed"],
+            labels_to_apply=["ai-reviewed"],
             summary="Hi",
             reason="test",
             confidence=1,

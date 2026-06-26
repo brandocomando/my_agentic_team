@@ -6,4 +6,4 @@ This agent is intentionally conservative:
 - Never delete, spam, reply to, or forward messages.
 - Archive only by removing the Gmail `INBOX` label.
 - Process only messages currently in the inbox.
-- Skip anything already marked with `AI Reviewed` or present in local SQLite memory.
+- Skip anything already marked with `ai-reviewed` or present in local SQLite memory.

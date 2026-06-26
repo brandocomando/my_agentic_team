@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date
+from datetime import datetime
 
 from gmail_inbox_agent.gmail.actions import labels_for, should_archive
 from gmail_inbox_agent.models import AgentState, ProcessedEmail
 
+SUMMARY_SUBJECT_PREFIX = "Gmail Agent Summary"
 
-def summary_subject(today: date | None = None) -> str:
-    return f"Gmail Agent Summary - {(today or date.today()).isoformat()}"
+
+def summary_subject(run_at: datetime | None = None) -> str:
+    timestamp = _run_timestamp(run_at)
+    return f"{SUMMARY_SUBJECT_PREFIX} - {timestamp}"
 
 
 def build_summary(state: AgentState) -> str:
+    run_at = datetime.now().astimezone()
     processed = state.processed
     archived = [item for item in processed if should_archive(item)]
     highlighted = [item for item in processed if item.classification.should_highlight]
@@ -24,6 +28,7 @@ def build_summary(state: AgentState) -> str:
         f"Archived: {len(archived)}",
         f"Highlighted: {len(highlighted)}",
         f"Dry Run: {str(state.dry_run).lower()}",
+        f"Run At: {_run_timestamp(run_at)}",
         "",
         "## Needs Attention",
         "",
@@ -64,6 +69,10 @@ def build_summary(state: AgentState) -> str:
     return "\n".join(lines)
 
 
+def is_summary_email_subject(subject: str) -> bool:
+    return subject.strip().lower().startswith(SUMMARY_SUBJECT_PREFIX.lower())
+
+
 def _highlight_lines(item: ProcessedEmail) -> list[str]:
     message = item.message
     classification = item.classification
@@ -92,3 +101,14 @@ def _action_lines(item: ProcessedEmail, dry_run: bool) -> list[str]:
         f"{mode} actions: {actions}",
         "",
     ]
+
+
+def _run_timestamp(run_at: datetime | None = None) -> str:
+    value = run_at or datetime.now().astimezone()
+    if value.tzinfo is None:
+        value = value.astimezone()
+    timestamp = value.strftime("%Y-%m-%d %H:%M:%S")
+    timezone = value.tzname()
+    if timezone:
+        return f"{timestamp} {timezone}"
+    return timestamp

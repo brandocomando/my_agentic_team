@@ -7,6 +7,8 @@ A local Python agent that reviews Gmail inbox messages, classifies them with an 
 - [Initial implementation plan](docs/Initial_Plan.md)
 - [Current architecture](docs/Architecture.md)
 - [Gmail OAuth setup](docs/Gmail_OAuth_Setup.md)
+- [Classification tuning](docs/Classification_Tuning.md)
+- [LLM providers](docs/LLM_Providers.md)
 
 The default mode is safe dry-run:
 

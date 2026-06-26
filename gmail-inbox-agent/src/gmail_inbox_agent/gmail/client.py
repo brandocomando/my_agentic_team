@@ -4,6 +4,7 @@ import base64
 from email.message import EmailMessage as MIMEEmailMessage
 from typing import Any
 
+from gmail_inbox_agent.labels import REVIEWED_LABEL
 from gmail_inbox_agent.models import EmailMessage
 
 
@@ -19,7 +20,7 @@ class GmailClient:
         response = (
             self.service.users()
             .messages()
-            .list(userId="me", q='in:inbox -label:"AI Reviewed"', maxResults=max_messages)
+            .list(userId="me", q=f'in:inbox -label:"{REVIEWED_LABEL}"', maxResults=max_messages)
             .execute()
         )
         messages = response.get("messages", [])

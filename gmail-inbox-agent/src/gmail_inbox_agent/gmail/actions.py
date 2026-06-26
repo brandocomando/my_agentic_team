@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from gmail_inbox_agent.labels import REVIEWED_LABEL, normalize_labels
 from gmail_inbox_agent.models import ProcessedEmail
 
 
-REVIEWED_LABEL = "AI Reviewed"
 MIN_ARCHIVE_CONFIDENCE = 0.7
 
 
@@ -27,7 +27,7 @@ def apply_actions(gmail_client: object, processed: ProcessedEmail) -> list[str]:
 
 
 def labels_for(processed: ProcessedEmail) -> list[str]:
-    return sorted({REVIEWED_LABEL, *processed.classification.labels_to_apply})
+    return normalize_labels([REVIEWED_LABEL, *processed.classification.labels_to_apply])
 
 
 def should_archive(processed: ProcessedEmail) -> bool:

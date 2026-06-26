@@ -1,0 +1,31 @@
+# Copy this file to config/rules.toml and edit it for your inbox.
+#
+# config/rules.toml is ignored by Git because it may contain private domains,
+# vendors, people, projects, schools, doctors, or other personal details.
+
+[classification]
+notes = """
+Use these personal rules in addition to the system prompt.
+When a rule conflicts with general guidance, prefer the safer action:
+highlight instead of archive, and never archive if action may be needed.
+"""
+
+[[rules]]
+name = "Work domain"
+when = "from_email domain is example-company.com"
+then = "Apply ai-work. Highlight if the email asks for a response, mentions a meeting, or includes a deadline."
+
+[[rules]]
+name = "School logistics"
+when = "subject or body mentions school pickup, field trip, absence, teacher, or permission slip"
+then = "Apply ai-family and ai-needs-attention. Do not archive."
+
+[[rules]]
+name = "Known marketing sender"
+when = "from_email domain is marketing.example.com"
+then = "Apply ai-low-priority. Archive if confidence is high and no action is required."
+
+[[rules]]
+name = "Spam phrase"
+when = "subject or body contains 'limited time crypto opportunity'"
+then = "Classify as spam_or_promo, apply ai-low-priority, and archive only if confidence is high."

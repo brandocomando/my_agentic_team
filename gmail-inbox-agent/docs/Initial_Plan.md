@@ -148,22 +148,22 @@ Do not request broader Gmail scopes unless necessary.
 Create or use these Gmail labels:
 
 ```text
-AI Reviewed
-AI Important
-AI Needs Attention
-AI Money
-AI Work
-AI Family
-AI Appointments
-AI Newsletters
-AI Receipts
-AI Low Priority
+ai-reviewed
+ai-important
+ai-needs-attention
+ai-money
+ai-work
+ai-family
+ai-appointments
+ai-newsletters
+ai-receipts
+ai-low-priority
 ```
 
 Every processed message should receive:
 
 ```text
-AI Reviewed
+ai-reviewed
 ```
 
 This is the main memory marker inside Gmail.
@@ -181,7 +181,7 @@ Use two layers of memory:
 If message has label:
 
 ```text
-AI Reviewed
+ai-reviewed
 ```
 
 skip it.
@@ -364,7 +364,7 @@ Do not process archived messages.
 Recommended Gmail query:
 
 ```text
-in:inbox -label:"AI Reviewed"
+in:inbox -label:"ai-reviewed"
 ```
 
 Limit by:
@@ -384,7 +384,7 @@ For each processed message:
 Always apply:
 
 ```text
-AI Reviewed
+ai-reviewed
 ```
 
 Apply category labels based on classification.
@@ -434,9 +434,9 @@ Suggested action: Review and respond
 
 ## Labels Applied
 
-- AI Work: 2
-- AI Money: 1
-- AI Newsletters: 6
+- ai-work: 2
+- ai-money: 1
+- ai-newsletters: 6
 
 ## Errors
 
@@ -555,7 +555,7 @@ Acceptance:
 Build:
 
 * Create missing labels
-* Apply `AI Reviewed`
+* Apply `ai-reviewed`
 * Apply category labels
 
 Acceptance:

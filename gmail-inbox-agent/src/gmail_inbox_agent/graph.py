@@ -7,10 +7,11 @@ from gmail_inbox_agent.config import load_settings
 from gmail_inbox_agent.gmail.actions import apply_actions, planned_actions
 from gmail_inbox_agent.gmail.auth import build_gmail_service
 from gmail_inbox_agent.gmail.client import GmailClient
+from gmail_inbox_agent.labels import REVIEWED_LABEL_ALIASES
 from gmail_inbox_agent.llm.classifier import EmailClassifier
 from gmail_inbox_agent.memory.reviewed_messages import ReviewedMessageStore
 from gmail_inbox_agent.models import AgentState, ProcessedEmail
-from gmail_inbox_agent.reports.summary import build_summary, summary_subject
+from gmail_inbox_agent.reports.summary import build_summary, is_summary_email_subject, summary_subject
 
 console = Console()
 
@@ -78,7 +79,9 @@ def fetch_inbox_messages(state: AgentState) -> AgentState:
 def filter_unreviewed_messages(state: AgentState) -> AgentState:
     unreviewed = []
     for message in state.messages:
-        if "AI Reviewed" in message.existing_labels:
+        if is_summary_email_subject(message.subject):
+            continue
+        if REVIEWED_LABEL_ALIASES.intersection(message.existing_labels):
             continue
         if state.memory and state.memory.is_reviewed(message.gmail_message_id):
             continue
@@ -88,7 +91,14 @@ def filter_unreviewed_messages(state: AgentState) -> AgentState:
 
 
 def classify_messages(state: AgentState) -> AgentState:
-    classifier = EmailClassifier(state.config.openai_api_key if state.config else "")
+    classifier = EmailClassifier(
+        provider=state.config.llm_provider if state.config else "openai",
+        api_key=state.config.openai_api_key if state.config else "",
+        openai_model=state.config.openai_model if state.config else "gpt-4.1-mini",
+        ollama_model=state.config.ollama_model if state.config else "llama3.1:8b",
+        ollama_base_url=state.config.ollama_base_url if state.config else "http://localhost:11434",
+        rules_path=state.config.classification_rules_path if state.config else None,
+    )
     processed = []
     for message in state.unreviewed_messages:
         try:
@@ -127,6 +137,9 @@ def send_summary(state: AgentState) -> AgentState:
     summary = build_summary(state)
     console.print(summary)
     if state.dry_run:
+        return state
+    if not state.processed:
+        console.print("[yellow]No new emails processed; summary email not sent.[/yellow]")
         return state
     if not state.gmail_client:
         state.errors.append("Summary email not sent: Gmail client unavailable.")

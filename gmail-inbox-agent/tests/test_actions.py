@@ -30,7 +30,7 @@ def make_processed(confidence: float = 1.0, should_archive_value: bool = True) -
             category="newsletter",
             should_archive=should_archive_value,
             should_highlight=False,
-            labels_to_apply=["AI Reviewed", "AI Newsletters"],
+            labels_to_apply=["ai-reviewed", "ai-newsletters"],
             summary="Sale",
             reason="promo",
             confidence=confidence,

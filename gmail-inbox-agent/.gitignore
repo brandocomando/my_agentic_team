@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+config/rules.toml
 *.pem
 *.key
 *.p12
