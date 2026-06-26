@@ -198,9 +198,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Push["Push to main"] --> Paths{"gmail-inbox-agent changed?"}
-    Paths -->|yes| Tests["uv pytest"]
-    Tests --> Release["semantic-release"]
+    PR["Pull request"] --> Tests["uv pytest"]
+    Push["Push to main"] --> Release["semantic-release"]
     Release --> Docker{"new version?"}
     Docker -->|yes| Hub["Docker Hub: latest, semver, sha"]
 ```

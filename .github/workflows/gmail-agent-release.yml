@@ -29,6 +29,7 @@ env:
 jobs:
   test:
     name: Test Gmail Agent
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -50,8 +51,6 @@ jobs:
 
   release:
     name: Semantic Release
-    needs:
-      - test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:

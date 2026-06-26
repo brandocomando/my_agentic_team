@@ -9,7 +9,7 @@ The workflow runs when changes land on `main` under:
 - `gmail-inbox-agent/**`
 - `.github/workflows/gmail-agent-release.yml`
 
-Pull requests run tests only. Pushes to `main` run tests, then semantic-release.
+Pull requests run tests. Pushes to `main` run semantic-release and publish Docker images when a new version is created.
 
 ## Versioning
 
@@ -86,13 +86,13 @@ Use a Docker Hub access token rather than your account password.
 
 ```mermaid
 flowchart TD
-    A["Push to main"] --> B{"gmail-inbox-agent changed?"}
+    A["Pull request"] --> B{"gmail-inbox-agent changed?"}
     B -->|yes| C["Run tests"]
-    C --> D["semantic-release"]
-    D --> E{"new version?"}
-    E -->|yes| F["Build Docker image"]
-    F --> G["Push latest + version tags"]
-    E -->|no| H["Stop without publishing image"]
+    D["Push to main"] --> E["semantic-release"]
+    E --> F{"new version?"}
+    F -->|yes| G["Build Docker image"]
+    G --> H["Push latest + version tags"]
+    F -->|no| I["Stop without publishing image"]
 ```
 
 ## Official References
