@@ -52,6 +52,22 @@ v1.2.3
 sha-<full-git-sha>
 ```
 
+Images are multi-architecture:
+
+```text
+linux/amd64
+linux/arm64
+```
+
+The release workflow is a thin caller around `.github/workflows/reusable-agent-release.yml`, so future agents can reuse the same test, semantic-release, multi-architecture Docker, and caching behavior.
+
+The Docker image builds on native GitHub-hosted runners:
+
+- `ubuntu-latest` for `linux/amd64`
+- `ubuntu-24.04-arm` for `linux/arm64`
+
+Each architecture build uses GitHub Actions cache for BuildKit layers, pushes a digest, then the manifest job publishes the shared Docker tags. Pull request tests also use the `uv` GitHub Actions cache.
+
 After publishing, run the image directly:
 
 ```bash
@@ -89,9 +105,12 @@ flowchart TD
     B -->|yes| C["Run tests"]
     D["Push to main"] --> E["semantic-release"]
     E --> F{"new version?"}
-    F -->|yes| G["Build Docker image"]
-    G --> H["Push latest + version tags"]
-    F -->|no| I["Stop without publishing image"]
+    F -->|yes| G["Build amd64 image"]
+    F -->|yes| H["Build arm64 image"]
+    G --> I["Push digest"]
+    H --> I
+    I --> J["Publish multi-arch tags"]
+    F -->|no| K["Stop without publishing image"]
 ```
 
 ## Official References

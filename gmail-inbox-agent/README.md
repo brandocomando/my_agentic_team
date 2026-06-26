@@ -6,7 +6,7 @@ It is designed to run safely from your machine, either directly with `uv`, with 
 
 ## Documentation
 
-- [Contributing guide](../CONTRIBUTING.md)
+- [Contributing guide](CONTRIBUTING.md)
 - [Initial implementation plan](docs/Initial_Plan.md)
 - [Current architecture](docs/Architecture.md)
 - [Gmail OAuth setup](docs/Gmail_OAuth_Setup.md)

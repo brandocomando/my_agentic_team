@@ -1,88 +1,87 @@
 # Contributing
 
-Thanks for checking out this repo. It is both a working automation project and a public record of how the agents are designed, tested, documented, and shipped.
+Thanks for checking out this repo. It is both a working automation project and a public record of how local-first agents are designed, tested, documented, and shipped.
 
-## Project Layout
+## Repository Layout
 
-- `gmail-inbox-agent/` is the active agent.
-- `gmail-inbox-agent/docs/` contains architecture, setup, tuning, Docker, and release docs.
-- `.github/workflows/` contains CI/release automation.
+- `gmail-inbox-agent/` is the first active agent.
+- Future agents should live in their own top-level directories.
+- `.github/workflows/` contains reusable CI/release automation.
+- Root-level docs describe repo-wide conventions. Agent-specific docs belong inside each agent directory.
 
-## Local Setup
+## Public Contribution Flow
 
-For the Gmail Inbox Agent:
+This is a public repository, but outside contributors should not expect direct push access. The normal flow is:
+
+1. Fork the repository to your own GitHub account.
+2. Create a feature branch in your fork.
+3. Push your branch to your fork.
+4. Open a pull request from your fork back to this repository.
+
+For maintainers with direct access, still use a branch and pull request instead of pushing directly to `main`. This keeps CI, release automation, and review history visible.
+
+## Agent Guides
+
+- [Gmail Inbox Agent contributing guide](gmail-inbox-agent/CONTRIBUTING.md)
+- [Gmail Inbox Agent README](gmail-inbox-agent/README.md)
+
+When adding a new agent, include:
+
+- `README.md`
+- `CONTRIBUTING.md` if the agent has unique setup or safety rules
+- `docs/Architecture.md`
+- `.env.example` when configuration is needed
+- Tests for meaningful behavior
+- Public-repo-safe `.gitignore` entries for local secrets and runtime state
+
+## Public Repo Safety
+
+Never commit:
+
+- `.env` files
+- API keys or PATs
+- OAuth credentials or tokens
+- local rules containing private domains/names
+- runtime databases or memory files
+- logs
+- virtualenvs or caches
+
+Before pushing work near config/data paths, check:
 
 ```bash
-cd gmail-inbox-agent
-uv sync --extra dev
-uv run --extra dev pytest
+git status --short --ignored
 ```
 
-Optional:
+## PR Titles And Squash Merge
 
-```bash
-cp .env.example .env
-cp config/rules.example.toml config/rules.toml
-```
+PR titles must use conventional commit format because this repo uses squash merge and the PR title becomes the commit message on `main`.
 
-Do not commit `.env`, OAuth tokens, credentials, SQLite memory, local rules, or logs.
-
-## Common Commands
-
-```bash
-cd gmail-inbox-agent
-task test
-task dry-run -- --max-messages 10
-task docker:dry-run -- --max-messages 10
-task compose:postgres:dry-run -- --max-messages 10
-```
-
-If Task is not installed, use the equivalent `uv`, `docker`, or `docker compose` commands documented in [Docker.md](gmail-inbox-agent/docs/Docker.md).
-
-## Safety Expectations
-
-The Gmail Inbox Agent must stay conservative:
-
-- Default to dry-run.
-- Never delete emails.
-- Never mark messages as spam.
-- Never reply or forward.
-- Archive only by removing the Gmail `INBOX` label.
-- Skip agent-generated summary emails.
-- Keep secrets and personal data out of Git.
-
-## Documentation
-
-Update docs when behavior changes:
-
-- Workflow or architecture changes: [Architecture.md](gmail-inbox-agent/docs/Architecture.md)
-- Gmail auth changes: [Gmail_OAuth_Setup.md](gmail-inbox-agent/docs/Gmail_OAuth_Setup.md)
-- Classification/rules changes: [Classification_Tuning.md](gmail-inbox-agent/docs/Classification_Tuning.md)
-- LLM provider changes: [LLM_Providers.md](gmail-inbox-agent/docs/LLM_Providers.md)
-- Docker/runtime changes: [Docker.md](gmail-inbox-agent/docs/Docker.md)
-- Release pipeline changes: [Release.md](gmail-inbox-agent/docs/Release.md)
-
-## Commits And Releases
-
-Use conventional commits so semantic-release can version the agent:
+Use:
 
 ```text
-feat(gmail-inbox-agent): add deterministic rules engine
-fix(gmail-inbox-agent): skip summary emails
-docs(gmail-inbox-agent): expand Docker setup
-chore(gmail-inbox-agent): publish Docker image
+<type>(<agent-or-area>): <Capitalized summary>
 ```
 
-Release behavior:
+Examples:
 
-- Pull requests run tests.
-- Pushes to `main` affecting `gmail-inbox-agent/**` run semantic-release.
-- New releases publish Docker images to `brandocomando8/gmail-inbox-agent`.
+```text
+fix(gmail-inbox-agent): Update to support ARM Docker hosts
+feat(gmail-inbox-agent): Add deterministic rules engine
+docs(readme): Improve new user setup guide
+chore(ci): Add reusable agent release workflow
+```
 
-## Pull Request Checklist
+Weak titles such as `Update docs` or `arm docker fix` should be rewritten before merge.
 
-- Tests pass with `uv run --extra dev pytest`.
-- Public docs are updated if behavior changed.
-- No secrets, tokens, personal rules, inbox memory, or logs are included.
-- Docker or Compose changes are documented.
-- The change keeps dry-run/apply safety boundaries intact.
+## Documentation Expectations
+
+Update docs when behavior changes. At minimum:
+
+- Architecture changes should update that agent's architecture doc.
+- Runtime/deployment changes should update Docker or setup docs.
+- Release workflow changes should update release docs.
+- New safety rules should be documented in the relevant agent guide.
+
+## Reusable Release Workflow
+
+Agents should prefer `.github/workflows/reusable-agent-release.yml` for release automation. Agent-specific workflows should be thin callers with only agent-specific inputs such as directory, image name, release tag format, and display name.

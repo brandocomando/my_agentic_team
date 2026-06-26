@@ -1,0 +1,220 @@
+name: Reusable Agent Release
+
+on:
+  workflow_call:
+    inputs:
+      agent_dir:
+        description: "Directory containing the agent project."
+        required: true
+        type: string
+      dockerfile:
+        description: "Dockerfile path relative to the repository root."
+        required: true
+        type: string
+      dockerhub_username:
+        description: "Docker Hub username."
+        required: true
+        type: string
+      image_description:
+        description: "OCI image description label."
+        required: true
+        type: string
+      image_name:
+        description: "Docker image name, including namespace."
+        required: true
+        type: string
+      image_title:
+        description: "OCI image title label."
+        required: true
+        type: string
+      python_version:
+        default: "3.12"
+        description: "Python version for test jobs."
+        required: false
+        type: string
+      release_branch:
+        default: main
+        description: "Branch that publishes releases."
+        required: false
+        type: string
+      release_name:
+        description: "Human-readable release step name."
+        required: true
+        type: string
+      release_tag_format:
+        description: "semantic-release tag format."
+        required: true
+        type: string
+      test_command:
+        default: uv run --extra dev pytest
+        description: "Command to run for pull request validation."
+        required: false
+        type: string
+    secrets:
+      docker_hub_pat:
+        description: "Docker Hub access token."
+        required: true
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  test:
+    name: Test ${{ inputs.image_title }}
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.agent_dir }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: ${{ inputs.agent_dir }}/uv.lock
+
+      - name: Run tests
+        run: ${{ inputs.test_command }}
+
+  release:
+    name: Semantic Release
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', inputs.release_branch)
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+      tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Release ${{ inputs.release_name }}
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v6
+        with:
+          working_directory: ./${{ inputs.agent_dir }}
+          tag_format: ${{ inputs.release_tag_format }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  docker:
+    name: Build Docker Image (${{ matrix.arch }})
+    needs:
+      - release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Validate Docker Hub configuration
+        run: |
+          test -n "${{ inputs.dockerhub_username }}" || (echo "Missing dockerhub_username input" && exit 1)
+          test -n "${{ secrets.docker_hub_pat }}" || (echo "Missing docker_hub_pat secret" && exit 1)
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ inputs.dockerhub_username }}
+          password: ${{ secrets.docker_hub_pat }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ inputs.agent_dir }}
+          file: ./${{ inputs.dockerfile }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ inputs.image_name }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ inputs.agent_dir }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.agent_dir }}-${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.title=${{ inputs.image_title }}
+            org.opencontainers.image.description=${{ inputs.image_description }}
+            org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker-manifest:
+    name: Publish Docker Manifest
+    needs:
+      - release
+      - docker
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Validate Docker Hub configuration
+        run: |
+          test -n "${{ inputs.dockerhub_username }}" || (echo "Missing dockerhub_username input" && exit 1)
+          test -n "${{ secrets.docker_hub_pat }}" || (echo "Missing docker_hub_pat secret" && exit 1)
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ inputs.dockerhub_username }}
+          password: ${{ secrets.docker_hub_pat }}
+
+      - name: Create and push manifest
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          digest_args=""
+          for digest_file in /tmp/digests/*; do
+            digest_args="$digest_args ${{ inputs.image_name }}@sha256:$(basename "$digest_file")"
+          done
+
+          docker buildx imagetools create \
+            -t "${{ inputs.image_name }}:latest" \
+            -t "${{ inputs.image_name }}:${VERSION}" \
+            -t "${{ inputs.image_name }}:v${VERSION}" \
+            -t "${{ inputs.image_name }}:sha-${{ github.sha }}" \
+            $digest_args
