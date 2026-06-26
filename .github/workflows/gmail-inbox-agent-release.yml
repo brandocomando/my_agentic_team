@@ -7,10 +7,12 @@ on:
     paths:
       - "gmail-inbox-agent/**"
       - ".github/workflows/gmail-inbox-agent-release.yml"
+      - ".github/workflows/reusable-agent-release.yml"
   pull_request:
     paths:
       - "gmail-inbox-agent/**"
       - ".github/workflows/gmail-inbox-agent-release.yml"
+      - ".github/workflows/reusable-agent-release.yml"
   workflow_dispatch:
 
 permissions:
@@ -22,94 +24,17 @@ concurrency:
   group: gmail-inbox-agent-release-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  AGENT_DIR: gmail-inbox-agent
-  IMAGE_NAME: brandocomando8/gmail-inbox-agent
-
 jobs:
-  test:
-    name: Test Gmail Inbox Agent
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.AGENT_DIR }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Run tests
-        run: uv run --extra dev pytest
-
   release:
-    name: Semantic Release
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    outputs:
-      published: ${{ steps.semantic.outputs.new_release_published }}
-      version: ${{ steps.semantic.outputs.new_release_version }}
-      tag: ${{ steps.semantic.outputs.new_release_git_tag }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Release Gmail Inbox Agent
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v6
-        with:
-          working_directory: ./${{ env.AGENT_DIR }}
-          tag_format: gmail-inbox-agent-v${version}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  docker:
-    name: Build And Push Docker Image
-    needs:
-      - release
-    if: needs.release.outputs.published == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Validate Docker Hub configuration
-        run: |
-          test -n "${{ vars.DOCKERHUB_USERNAME }}" || (echo "Missing repository variable DOCKERHUB_USERNAME" && exit 1)
-          test -n "${{ secrets.DOCKER_HUB_PAT }}" || (echo "Missing repository secret DOCKER_HUB_PAT" && exit 1)
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PAT }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: ./${{ env.AGENT_DIR }}
-          file: ./${{ env.AGENT_DIR }}/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ needs.release.outputs.version }}
-            ${{ env.IMAGE_NAME }}:v${{ needs.release.outputs.version }}
-            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
-          labels: |
-            org.opencontainers.image.title=Gmail Inbox Agent
-            org.opencontainers.image.description=Local Gmail inbox triage agent
-            org.opencontainers.image.version=${{ needs.release.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+    uses: ./.github/workflows/reusable-agent-release.yml
+    with:
+      agent_dir: gmail-inbox-agent
+      dockerfile: gmail-inbox-agent/Dockerfile
+      dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+      image_description: Local Gmail inbox triage agent
+      image_name: brandocomando8/gmail-inbox-agent
+      image_title: Gmail Inbox Agent
+      release_name: Gmail Inbox Agent
+      release_tag_format: gmail-inbox-agent-v${version}
+    secrets:
+      docker_hub_pat: ${{ secrets.DOCKER_HUB_PAT }}

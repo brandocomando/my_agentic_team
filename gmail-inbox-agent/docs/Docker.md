@@ -68,6 +68,8 @@ After the GitHub release workflow publishes to Docker Hub, replace `gmail-inbox-
 brandocomando8/gmail-inbox-agent:latest
 ```
 
+Published images support both `linux/amd64` and `linux/arm64`, so the same tag works on typical x86 Linux hosts and Apple Silicon/ARM hosts. The release workflow builds these on native GitHub-hosted runners instead of emulating ARM with QEMU, and it uses GitHub Actions cache for Docker layers.
+
 ## Docker Compose With SQLite
 
 SQLite remains the default.
