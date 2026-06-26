@@ -72,6 +72,23 @@ sequenceDiagram
     CLI-->>User: Summary and final status
 ```
 
+## Gmail OAuth Check
+
+```mermaid
+sequenceDiagram
+    participant User as Local User
+    participant CLI as gmail-agent CLI
+    participant Browser as Browser OAuth
+    participant Gmail as Gmail API
+
+    User->>CLI: uv run gmail-agent --auth-check
+    CLI->>Browser: Open OAuth approval when token is missing
+    Browser-->>CLI: OAuth grant
+    CLI->>Gmail: Request Gmail profile
+    Gmail-->>CLI: Email address and mailbox counts
+    CLI-->>User: Authentication status
+```
+
 ## Data And Trust Boundaries
 
 ```mermaid
@@ -123,5 +140,6 @@ When changing the agent, update this doc if the change affects:
 - LLM prompts, classifier output schema, or model integration.
 - Dry-run/apply safety behavior.
 - Scheduling, containers, GitHub Actions, or deployment.
+- OAuth setup or authentication behavior.
 
 Keep implementation plans, milestone notes, and decision history under `docs/` so the public repo shows both the product and the engineering process behind it.

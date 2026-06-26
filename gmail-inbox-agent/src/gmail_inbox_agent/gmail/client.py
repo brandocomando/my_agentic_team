@@ -12,6 +12,9 @@ class GmailClient:
         self.service = service
         self._label_cache: dict[str, str] = {}
 
+    def get_profile(self) -> dict[str, Any]:
+        return self.service.users().getProfile(userId="me").execute()
+
     def fetch_inbox_messages(self, max_messages: int) -> list[EmailMessage]:
         response = (
             self.service.users()

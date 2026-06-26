@@ -48,6 +48,13 @@ def build_summary(state: AgentState) -> str:
     else:
         lines.append("None")
 
+    lines.extend(["", "## Actions", ""])
+    if processed:
+        for item in processed:
+            lines.extend(_action_lines(item, state.dry_run))
+    else:
+        lines.append("None")
+
     lines.extend(["", "## Errors", ""])
     if state.errors:
         lines.extend(f"- {error}" for error in state.errors)
@@ -66,5 +73,22 @@ def _highlight_lines(item: ProcessedEmail) -> list[str]:
         f"Category: {classification.category}",
         f"Reason: {classification.reason}",
         f"Suggested action: {classification.summary}",
+        "",
+    ]
+
+
+def _action_lines(item: ProcessedEmail, dry_run: bool) -> list[str]:
+    message = item.message
+    classification = item.classification
+    mode = "Planned" if dry_run else "Applied"
+    archive = "yes" if should_archive(item) else "no"
+    actions = ", ".join(item.actions_taken) if item.actions_taken else "No action recorded"
+    return [
+        f"### {message.subject or '(no subject)'}",
+        f"From: {message.from_email}",
+        f"Category: {classification.category}",
+        f"Importance: {classification.importance}",
+        f"Archive: {archive}",
+        f"{mode} actions: {actions}",
         "",
     ]

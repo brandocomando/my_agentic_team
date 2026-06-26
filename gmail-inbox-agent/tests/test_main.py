@@ -21,3 +21,13 @@ def test_cli_apply_opt_in_disables_dry_run() -> None:
 
     assert dry_run is False
     assert max_messages == 10
+
+
+def test_auth_check_does_not_change_run_options() -> None:
+    dry_run, max_messages = resolve_run_options(
+        Namespace(apply=False, dry_run=False, auth_check=True, max_messages=None),
+        default_max_messages=25,
+    )
+
+    assert dry_run is True
+    assert max_messages == 25
