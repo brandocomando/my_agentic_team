@@ -73,6 +73,14 @@ docs(gmail-inbox-agent): expand Docker setup
 chore(gmail-inbox-agent): publish Docker image
 ```
 
+PR titles must also use conventional commit format because this repo uses squash merge and the PR title becomes the commit message on `main`.
+
+Use a capitalized summary:
+
+```text
+fix(gmail-inbox-agent): Update to support ARM Docker hosts
+```
+
 Release behavior:
 
 - Pull requests run tests.
