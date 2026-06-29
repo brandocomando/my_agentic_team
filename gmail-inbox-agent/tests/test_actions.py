@@ -6,10 +6,10 @@ class FakeGmailClient:
     def __init__(self) -> None:
         self.calls = []
 
-    def modify_message(self, message_id, add_label_names, remove_label_ids) -> None:
+    def modify_thread(self, thread_id, add_label_names, remove_label_ids) -> None:
         self.calls.append(
             {
-                "message_id": message_id,
+                "thread_id": thread_id,
                 "add_label_names": add_label_names,
                 "remove_label_ids": remove_label_ids,
             }
@@ -42,6 +42,7 @@ def test_archive_action_only_removes_inbox_label() -> None:
     client = FakeGmailClient()
     apply_actions(client, make_processed())
 
+    assert client.calls[0]["thread_id"] == "t1"
     assert client.calls[0]["remove_label_ids"] == ["INBOX"]
 
 

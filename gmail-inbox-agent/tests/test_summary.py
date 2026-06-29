@@ -56,7 +56,7 @@ def test_summary_report_includes_actions() -> None:
             reason="Low-value newsletter",
             confidence=0.95,
         ),
-        actions_taken=["apply labels: ai-newsletters, ai-reviewed", "archive: remove INBOX label"],
+        actions_taken=["apply labels to thread: ai-newsletters, ai-reviewed", "archive thread: remove INBOX label"],
     )
     summary = build_summary(AgentState(dry_run=True, processed=[processed]))
 

@@ -90,7 +90,7 @@ uv run gmail-inbox-agent --dry-run --max-messages 10
 Dry-run mode can fetch and classify inbox messages, but it does not:
 
 - Apply labels.
-- Archive messages.
+- Archive threads.
 - Write reviewed-message memory.
 - Send summary email.
 
@@ -102,7 +102,7 @@ Only after reviewing dry-run output, run:
 uv run gmail-inbox-agent --apply --max-messages 1
 ```
 
-The agent still never deletes messages. Archive means removing the Gmail `INBOX` label.
+The agent still never deletes messages. Archive means removing the Gmail `INBOX` label from a thread.
 
 ## Public Repo Safety
 

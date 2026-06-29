@@ -14,7 +14,7 @@ flowchart TD
     Graph --> MemoryRead["SQLite memory: reviewed IDs"]
     Graph --> Classifier["LLM classifier"]
     Graph --> Rules["config/rules.toml"]
-    Graph --> GmailActions["Gmail API: labels and archive"]
+    Graph --> GmailActions["Gmail API: thread labels and archive"]
     Graph --> MemoryWrite["SQLite memory: record review"]
     Graph --> Summary["Summary report"]
     Summary --> Console["Rich CLI output"]
@@ -60,13 +60,14 @@ sequenceDiagram
     Gmail-->>Graph: Inbox messages
     Graph->>Memory: Check reviewed message IDs
     Memory-->>Graph: Already reviewed status
-    Graph->>LLM: Classify unreviewed messages with OpenAI or Ollama
+    Graph->>Graph: Keep one representative message per thread
+    Graph->>LLM: Classify unreviewed threads with OpenAI or Ollama
     LLM-->>Graph: EmailClassification JSON
     alt dry run
         Graph-->>CLI: Print intended actions
     else apply
-        Graph->>Gmail: Apply labels
-        Graph->>Gmail: Remove INBOX label when safe to archive
+        Graph->>Gmail: Apply labels to thread
+        Graph->>Gmail: Remove INBOX label from thread when safe to archive
         Graph->>Memory: Store reviewed message IDs
         Graph->>Gmail: Send summary email
     end
@@ -130,9 +131,10 @@ flowchart TB
 
 - Default mode is dry-run. The agent mutates Gmail only when `--apply` is passed.
 - The agent fetches only messages in the Gmail inbox.
+- The agent processes each Gmail thread once per run using the first returned message as the representative.
 - Already reviewed mail is skipped using both `ai-reviewed` and SQLite memory.
 - The agent never deletes, permanently removes, replies to, forwards, or marks messages as spam.
-- Archive means removing the Gmail `INBOX` label.
+- Archive means removing the Gmail `INBOX` label from the thread.
 - Low-confidence messages are not archived.
 - Agent-generated summary emails are skipped when scanning the inbox.
 - Apply runs do not send a summary email when no new emails were processed.
