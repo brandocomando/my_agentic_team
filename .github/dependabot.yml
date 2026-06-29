@@ -5,10 +5,35 @@
 
 version: 2
 updates:
+  - package-ecosystem: "pip"
+    directory: "/gmail-inbox-agent"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "target:gmail-inbox-agent"
+
+  - package-ecosystem: "pip"
+    directory: "/github-agent"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "target:github-agent"
+
   - package-ecosystem: "docker"
     directory: "/gmail-inbox-agent"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "target:gmail-inbox-agent"
+
   - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
