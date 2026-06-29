@@ -11,6 +11,7 @@ Build a scheduled GitHub maintenance agent that scans each agent in this reposit
 - Normalize scanner findings into deterministic issue proposals.
 - Print issue proposals in dry-run mode.
 - Add stable labels for agent, scanner, severity, and target area.
+- Support local one-agent-at-a-time scans before enabling scheduled workflows.
 
 ## Phase 2: GitHub Issue Creation
 

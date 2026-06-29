@@ -38,6 +38,27 @@ sequenceDiagram
     end
 ```
 
+## Local Agent Scan Sequence
+
+```mermaid
+sequenceDiagram
+    participant User as Local User
+    participant Agent as github-agent
+    participant Audit as pip-audit
+    participant GitHub as GitHub Issues
+
+    User->>Agent: scan-agent --agent gmail-inbox-agent --dry-run
+    Agent->>Audit: pip-audit ../gmail-inbox-agent
+    Audit-->>Agent: JSON findings
+    Agent->>Agent: Normalize and label target:gmail-inbox-agent
+    alt dry run
+        Agent-->>User: Print planned issues
+    else apply
+        Agent->>GitHub: Query open agent issues by dedupe key
+        Agent->>GitHub: Create missing issues
+    end
+```
+
 ## Future Remediation Sequence
 
 ```mermaid

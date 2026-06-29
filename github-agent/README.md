@@ -57,6 +57,40 @@ task scan:pip-audit
 
 Use `--target` when planning issues from pip-audit output because pip-audit reports vulnerable packages, not the repo path that produced the report.
 
+## Scan One Agent Locally
+
+Run a local dry-run against one agent directory:
+
+```bash
+uv run github-agent scan-agent --agent gmail-inbox-agent --repo-root .. --dry-run
+task scan:gmail-inbox-agent
+```
+
+This runs `pip-audit` against the selected agent project path, normalizes findings, and prints the GitHub issues it would create. Planned issues include labels such as:
+
+- `agent:github-agent`
+- `scanner:pip-audit`
+- `security`
+- `severity:unknown`
+- `target:gmail-inbox-agent`
+
+To create missing issues, configure `.env`:
+
+```text
+GITHUB_OWNER=brandocomando
+GITHUB_REPO=my_agentic_team
+GITHUB_TOKEN=...
+```
+
+Then run:
+
+```bash
+uv run github-agent scan-agent --agent gmail-inbox-agent --repo-root .. --apply
+task apply:gmail-inbox-agent
+```
+
+Apply mode queries open issues for existing `github-agent` dedupe keys before creating anything.
+
 ## Public Repo Safety
 
 Never commit GitHub tokens, scanner reports, issue exports, logs, or local runtime state. This agent is designed for a public repository, so examples and docs should avoid private package names, private paths, and real vulnerability data unless already public.

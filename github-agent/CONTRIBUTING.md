@@ -26,6 +26,7 @@ task test
 task plan -- --input findings/trivy.json
 task plan -- --scanner pip-audit --target gmail-inbox-agent --input findings/pip-audit.json
 task scan:pip-audit
+task scan:gmail-inbox-agent
 uv run github-agent plan-issues --input findings/trivy.json
 ```
 
@@ -33,6 +34,7 @@ uv run github-agent plan-issues --input findings/trivy.json
 
 - Default to dry-run.
 - Do not create or modify GitHub issues without an explicit apply mode.
+- Scan one agent at a time and label findings with `target:<agent-name>`.
 - Never commit scanner reports that may include private paths or dependency metadata.
 - Keep issue labels deterministic so scheduled runs can deduplicate work.
 - Treat automated fixes as pull-request proposals, not direct pushes to `main`.

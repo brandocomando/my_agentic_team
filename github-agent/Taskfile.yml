@@ -25,3 +25,18 @@ tasks:
     desc: Run pip-audit and print JSON output; pass pip-audit args with `--`
     cmds:
       - uv run pip-audit --format json {{.CLI_ARGS}}
+
+  scan-agent:
+    desc: Scan one agent locally and print planned GitHub issues
+    cmds:
+      - uv run github-agent scan-agent {{.CLI_ARGS}}
+
+  scan:gmail-inbox-agent:
+    desc: Scan Gmail Inbox Agent locally with pip-audit
+    cmds:
+      - uv run github-agent scan-agent --agent gmail-inbox-agent --repo-root .. --dry-run {{.CLI_ARGS}}
+
+  apply:gmail-inbox-agent:
+    desc: Scan Gmail Inbox Agent and create missing GitHub issues
+    cmds:
+      - uv run github-agent scan-agent --agent gmail-inbox-agent --repo-root .. --apply {{.CLI_ARGS}}
