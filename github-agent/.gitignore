@@ -1,0 +1,25 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime scanner data
+data/*
+!data/.gitkeep
+findings/*
+!findings/.gitkeep
+logs/
+*.log
+
+# Python/runtime artifacts
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.py[cod]
+

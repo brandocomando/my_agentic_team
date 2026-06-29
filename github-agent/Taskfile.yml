@@ -1,0 +1,23 @@
+version: "3"
+
+tasks:
+  sync:
+    desc: Install dependencies
+    cmds:
+      - uv sync --extra dev
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run --extra dev pytest
+
+  run:
+    desc: Run the agent locally; pass args with `--`
+    cmds:
+      - uv run github-agent {{.CLI_ARGS}}
+
+  plan:
+    desc: Plan GitHub issues from scanner output
+    cmds:
+      - uv run github-agent plan-issues {{.CLI_ARGS}}
+
