@@ -4,7 +4,7 @@ from github_agent.models import Finding, IssueProposal
 
 
 BASE_LABELS = ["agent:github-agent"]
-SECURITY_SCANNERS = {"trivy"}
+SECURITY_SCANNERS = {"pip-audit", "trivy"}
 
 
 def build_issue_proposals(findings: list[Finding]) -> list[IssueProposal]:
@@ -62,4 +62,3 @@ def target_label(target: str) -> str:
     if first_path_part.endswith("-agent"):
         return first_path_part
     return "repo"
-

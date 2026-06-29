@@ -1,0 +1,19 @@
+[
+  {
+    "name": "flask",
+    "version": "0.5",
+    "vulns": [
+      {
+        "id": "PYSEC-2019-179",
+        "fix_versions": ["1.0"],
+        "aliases": ["CVE-2019-1010083", "GHSA-5wv5-4vpf-pj6m"],
+        "description": "Example Flask vulnerability."
+      }
+    ]
+  },
+  {
+    "name": "jinja2",
+    "version": "3.0.2",
+    "vulns": []
+  }
+]

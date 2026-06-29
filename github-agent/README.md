@@ -15,7 +15,7 @@ Early scaffold. The first implemented behavior turns scanner JSON into determini
 ## What It Will Do
 
 - Run scheduled scans through GitHub Actions.
-- Ingest scanner output from tools such as Trivy.
+- Ingest scanner output from tools such as Trivy and pip-audit.
 - Normalize findings into stable issue proposals.
 - Label issues by agent, scanner, severity, and target area.
 - Avoid duplicate issues for the same underlying finding.
@@ -38,9 +38,25 @@ Save scanner output under `findings/` locally. That directory is ignored by Git.
 uv run github-agent plan-issues --input findings/trivy.json
 ```
 
+For pip-audit JSON:
+
+```bash
+uv run github-agent plan-issues --scanner pip-audit --target gmail-inbox-agent --input findings/pip-audit.json
+```
+
 The command prints issue proposals as JSON. It does not create GitHub issues yet.
+
+## Python Dependency Audits
+
+`pip-audit` is included as a dev dependency for Python vulnerability checks:
+
+```bash
+uv run pip-audit --format json
+task scan:pip-audit
+```
+
+Use `--target` when planning issues from pip-audit output because pip-audit reports vulnerable packages, not the repo path that produced the report.
 
 ## Public Repo Safety
 
 Never commit GitHub tokens, scanner reports, issue exports, logs, or local runtime state. This agent is designed for a public repository, so examples and docs should avoid private package names, private paths, and real vulnerability data unless already public.
-

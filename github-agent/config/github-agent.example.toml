@@ -11,6 +11,9 @@ maintenance = "maintenance"
 enabled = true
 default_label = "scanner:trivy"
 
+[scanners.pip_audit]
+enabled = true
+default_label = "scanner:pip-audit"
+
 [targets]
 known_agents = ["gmail-inbox-agent", "github-agent"]
-

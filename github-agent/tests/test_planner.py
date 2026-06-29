@@ -31,6 +31,26 @@ def test_build_issue_proposal_labels_and_body() -> None:
     assert "github-agent-dedupe-key:" in proposal.body
 
 
+def test_pip_audit_findings_are_security_issues() -> None:
+    proposals = build_issue_proposals(
+        [
+            Finding(
+                scanner="pip-audit",
+                finding_id="PYSEC-2019-179",
+                title="flask vulnerability PYSEC-2019-179",
+                severity="unknown",
+                target="gmail-inbox-agent",
+                package_name="flask",
+            )
+        ]
+    )
+
+    assert proposals[0].title == "[pip-audit] UNKNOWN: flask vulnerability PYSEC-2019-179"
+    assert "scanner:pip-audit" in proposals[0].labels
+    assert "security" in proposals[0].labels
+    assert "severity:unknown" in proposals[0].labels
+
+
 def test_build_issue_proposals_deduplicates_findings() -> None:
     finding = Finding(
         scanner="trivy",
@@ -49,4 +69,3 @@ def test_build_issue_proposals_deduplicates_findings() -> None:
 def test_target_label_uses_agent_directory() -> None:
     assert target_label("gmail-inbox-agent/uv.lock") == "gmail-inbox-agent"
     assert target_label("README.md") == "repo"
-

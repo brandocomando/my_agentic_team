@@ -21,3 +21,7 @@ tasks:
     cmds:
       - uv run github-agent plan-issues {{.CLI_ARGS}}
 
+  scan:pip-audit:
+    desc: Run pip-audit and print JSON output; pass pip-audit args with `--`
+    cmds:
+      - uv run pip-audit --format json {{.CLI_ARGS}}

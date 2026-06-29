@@ -24,6 +24,8 @@ Do not commit `.env`, GitHub tokens, scanner reports, issue exports, logs, or lo
 ```bash
 task test
 task plan -- --input findings/trivy.json
+task plan -- --scanner pip-audit --target gmail-inbox-agent --input findings/pip-audit.json
+task scan:pip-audit
 uv run github-agent plan-issues --input findings/trivy.json
 ```
 
@@ -51,4 +53,3 @@ feat(github-agent): Add Trivy issue planner
 fix(github-agent): Deduplicate scanner findings
 docs(github-agent): Document scheduled scans
 ```
-

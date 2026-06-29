@@ -7,7 +7,7 @@ Build a scheduled GitHub maintenance agent that scans each agent in this reposit
 ## Phase 1: Finding Intake
 
 - Scaffold the `github-agent` package, docs, tests, and public-safe config.
-- Start with Trivy JSON ingestion.
+- Start with Trivy and pip-audit JSON ingestion.
 - Normalize scanner findings into deterministic issue proposals.
 - Print issue proposals in dry-run mode.
 - Add stable labels for agent, scanner, severity, and target area.
@@ -36,9 +36,8 @@ Build a scheduled GitHub maintenance agent that scans each agent in this reposit
 
 ## Open Questions
 
-- Which scanners should be enabled first after Trivy?
+- Which scanners should be enabled first after Trivy and pip-audit?
 - What severity threshold should create issues automatically?
 - Should low-severity findings become issues or a periodic summary?
 - Should remediation run locally, in GitHub Actions, or both?
 - How should duplicate findings across scanners be grouped?
-

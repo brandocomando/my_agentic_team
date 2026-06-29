@@ -68,6 +68,7 @@ sequenceDiagram
 Initial labels:
 
 - `agent:github-agent`
+- `scanner:pip-audit`
 - `scanner:trivy`
 - `security`
 - `maintenance`
@@ -75,6 +76,7 @@ Initial labels:
 - `severity:high`
 - `severity:medium`
 - `severity:low`
+- `severity:unknown`
 - `target:gmail-inbox-agent`
 - `target:github-agent`
 
@@ -88,4 +90,3 @@ Update this doc when changing:
 - Scheduled workflow behavior.
 - Issue dedupe rules.
 - Remediation or pull-request behavior.
-
