@@ -10,19 +10,20 @@ from pathlib import Path
 class GitHubAgentConfig:
     owner: str
     repo: str
-    token: str | None = None
 
 
 def load_config(path: Path | None = None) -> GitHubAgentConfig:
     load_dotenv(Path(".env"))
     config_path = path or Path(os.getenv("GITHUB_AGENT_CONFIG_PATH", "./config/github-agent.toml"))
     data = _load_toml(config_path)
+    if not data and path is None:
+        data = _load_toml(Path("./config/github-agent.example.toml"))
     repository = data.get("repository", {})
     owner = os.getenv("GITHUB_OWNER") or repository.get("owner")
     repo = os.getenv("GITHUB_REPO") or repository.get("name")
     if not owner or not repo:
         raise ValueError("GitHub owner and repo must be configured with GITHUB_OWNER/GITHUB_REPO or config TOML.")
-    return GitHubAgentConfig(owner=owner, repo=repo, token=os.getenv("GITHUB_TOKEN") or None)
+    return GitHubAgentConfig(owner=owner, repo=repo)
 
 
 def _load_toml(path: Path) -> dict:

@@ -2,43 +2,38 @@
 
 ## Goal
 
-Build a scheduled GitHub maintenance agent that scans each agent in this repository, opens labeled issues for actionable findings, and later attempts safe fixes through pull requests.
+Build a GitHub maintenance agent that helps evaluate and act on native GitHub security signals rather than re-implementing scanners already available to public repositories.
 
-## Phase 1: Finding Intake
+## Current Decision
 
-- Scaffold the `github-agent` package, docs, tests, and public-safe config.
-- Start with Trivy and pip-audit JSON ingestion.
-- Normalize scanner findings into deterministic issue proposals.
-- Print issue proposals in dry-run mode.
-- Add stable labels for agent, scanner, severity, and target area.
-- Support local one-agent-at-a-time scans before enabling scheduled workflows.
+Pause custom scanner ingestion. This repo now has GitHub-native security features enabled, including Dependabot, code scanning, and secret scanning. We should observe those tools first, then design the agent around the real alerts and pull requests they produce.
 
-## Phase 2: GitHub Issue Creation
+## Phase 1: Observe Native Signals
 
-- Add GitHub API authentication through `GITHUB_TOKEN`.
-- Query existing open issues before creating new issues.
-- Create missing issues only in explicit apply mode.
-- Add labels such as `agent:github-agent`, `scanner:trivy`, `severity:high`, and `target:gmail-inbox-agent`.
-- Document required GitHub Actions permissions.
+- Let Dependabot generate dependency alerts and PRs.
+- Let code scanning report code-level findings.
+- Let secret scanning report any credential exposure.
+- Capture examples of alert shape, labels, severity, ownership, and remediation flow.
+- Record which findings are already well-handled by GitHub without extra automation.
 
-## Phase 3: Scheduled Scans
+## Phase 2: Evaluate Agent Value
 
-- Add a GitHub Actions workflow that runs scanners on a schedule and on demand.
-- Upload scanner reports as workflow artifacts when safe.
-- Run the issue planner against scanner output.
-- Create issues for findings above the configured severity threshold.
+- Identify where human review still takes time.
+- Decide whether the agent should summarize alerts, comment on PRs, approve safe changes, or create follow-up issues.
+- Prefer consuming GitHub-native alerts and PRs through APIs over running duplicate scanners.
+- Keep all write behavior dry-run first.
 
-## Phase 4: Remediation Agent
+## Phase 3: Remediation Agent
 
-- Add a second scheduled workflow that picks up labeled issues.
-- Attempt bounded fixes in a branch.
+- Pick up actionable native alerts or Dependabot PRs.
+- Attempt bounded fixes in a branch when GitHub did not already provide a fix.
 - Open pull requests with conventional commit titles.
 - Never push directly to `main`.
 
 ## Open Questions
 
-- Which scanners should be enabled first after Trivy and pip-audit?
-- What severity threshold should create issues automatically?
-- Should low-severity findings become issues or a periodic summary?
-- Should remediation run locally, in GitHub Actions, or both?
-- How should duplicate findings across scanners be grouped?
+- Which native GitHub signals are noisy, and which are useful?
+- Are Dependabot PRs enough for Python, Docker, and GitHub Actions updates?
+- What should the agent do with code scanning alerts: summarize, create issues, or attempt fixes?
+- Should secret scanning alerts ever be automated, or only surfaced for human review?
+- What criteria make an automated approval safe?

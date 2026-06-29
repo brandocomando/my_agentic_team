@@ -2,18 +2,7 @@
 owner = "brandocomando"
 name = "my_agentic_team"
 
-[issue_labels]
-agent = "agent:github-agent"
-security = "security"
-maintenance = "maintenance"
-
-[scanners.trivy]
-enabled = true
-default_label = "scanner:trivy"
-
-[scanners.pip_audit]
-enabled = true
-default_label = "scanner:pip-audit"
-
-[targets]
-known_agents = ["gmail-inbox-agent", "github-agent"]
+[native_security_sources]
+dependabot = true
+code_scanning = true
+secret_scanning = true

@@ -1,10 +1,10 @@
 # GitHub Agent
 
-GitHub Agent is a planned repository maintenance agent for this public agent collection. It will run on schedules, collect security and maintenance findings from open-source scanners, open labeled GitHub issues, and eventually attempt safe fixes through pull requests.
+GitHub Agent is a planned repository maintenance agent for this public agent collection. It is currently paused while we evaluate GitHub's built-in security tooling: Dependabot, code scanning, and secret scanning.
 
 ## Status
 
-Early scaffold. The first implemented behavior turns scanner JSON into deterministic GitHub issue proposals in dry-run mode.
+Evaluation scaffold. This agent intentionally does not run its own vulnerability scanners yet. GitHub already provides strong native security signals for public repositories, so the next step is to collect real data from those tools before deciding what automation belongs here.
 
 ## Documentation
 
@@ -12,14 +12,13 @@ Early scaffold. The first implemented behavior turns scanner JSON into determini
 - [Initial plan](docs/Initial_Plan.md)
 - [Architecture](docs/Architecture.md)
 
-## What It Will Do
+## Intended Direction
 
-- Run scheduled scans through GitHub Actions.
-- Ingest scanner output from tools such as Trivy and pip-audit.
-- Normalize findings into stable issue proposals.
-- Label issues by agent, scanner, severity, and target area.
-- Avoid duplicate issues for the same underlying finding.
-- Later, pick up labeled issues and attempt fixes through pull requests.
+- Read GitHub-native security signals from Dependabot, code scanning, and secret scanning.
+- Evaluate how useful the built-in alerts and Dependabot PRs are before adding custom automation.
+- Triage native alerts by affected agent, severity, and fixability.
+- Approve, comment on, or improve Dependabot PRs when appropriate.
+- Later, pick up actionable alerts and attempt safe fixes through pull requests.
 
 ## Setup
 
@@ -30,67 +29,25 @@ cp .env.example .env
 cp config/github-agent.example.toml config/github-agent.toml
 ```
 
-## Plan Issues From Scanner Output
-
-Save scanner output under `findings/` locally. That directory is ignored by Git.
+## Status Command
 
 ```bash
-uv run github-agent plan-issues --input findings/trivy.json
+uv run github-agent status
+task status
 ```
 
-For pip-audit JSON:
+This prints the current evaluation status and the native GitHub security sources we intend to study.
 
-```bash
-uv run github-agent plan-issues --scanner pip-audit --target gmail-inbox-agent --input findings/pip-audit.json
-```
+## Re-Evaluation Plan
 
-The command prints issue proposals as JSON. It does not create GitHub issues yet.
+Once Dependabot, code scanning, and secret scanning have produced real alerts or PRs in this repo, revisit this agent and decide whether it should:
 
-## Python Dependency Audits
-
-`pip-audit` is included as a dev dependency for Python vulnerability checks:
-
-```bash
-uv run pip-audit --format json
-task scan:pip-audit
-```
-
-Use `--target` when planning issues from pip-audit output because pip-audit reports vulnerable packages, not the repo path that produced the report.
-
-## Scan One Agent Locally
-
-Run a local dry-run against one agent directory:
-
-```bash
-uv run github-agent scan-agent --agent gmail-inbox-agent --repo-root .. --dry-run
-task scan:gmail-inbox-agent
-```
-
-This runs `pip-audit` against the selected agent project path, normalizes findings, and prints the GitHub issues it would create. Planned issues include labels such as:
-
-- `agent:github-agent`
-- `scanner:pip-audit`
-- `security`
-- `severity:unknown`
-- `target:gmail-inbox-agent`
-
-To create missing issues, configure `.env`:
-
-```text
-GITHUB_OWNER=brandocomando
-GITHUB_REPO=my_agentic_team
-GITHUB_TOKEN=...
-```
-
-Then run:
-
-```bash
-uv run github-agent scan-agent --agent gmail-inbox-agent --repo-root .. --apply
-task apply:gmail-inbox-agent
-```
-
-Apply mode queries open issues for existing `github-agent` dedupe keys before creating anything.
+- summarize security posture across agents,
+- label or annotate native alerts,
+- approve safe Dependabot PRs,
+- open follow-up issues only when GitHub-native objects are not enough,
+- attempt fixes through pull requests.
 
 ## Public Repo Safety
 
-Never commit GitHub tokens, scanner reports, issue exports, logs, or local runtime state. This agent is designed for a public repository, so examples and docs should avoid private package names, private paths, and real vulnerability data unless already public.
+Never commit GitHub tokens, exported alert data, logs, or local runtime state. This agent is designed for a public repository, so examples and docs should avoid private package names, private paths, and real vulnerability data unless already public.

@@ -1,6 +1,6 @@
 # Contributing To GitHub Agent
 
-The GitHub Agent is planned as a repo maintenance and security automation agent. It will inspect scanner output, open labeled GitHub issues for findings, and eventually pick up those issues to propose fixes.
+The GitHub Agent is planned as a repo maintenance and security automation agent. It is currently paused while we evaluate GitHub-native Dependabot, code scanning, and secret scanning data.
 
 ## Local Setup
 
@@ -17,25 +17,22 @@ cp .env.example .env
 cp config/github-agent.example.toml config/github-agent.toml
 ```
 
-Do not commit `.env`, GitHub tokens, scanner reports, issue exports, logs, or local runtime state.
+Do not commit `.env`, GitHub tokens, exported alert data, logs, or local runtime state.
 
 ## Common Commands
 
 ```bash
 task test
-task plan -- --input findings/trivy.json
-task plan -- --scanner pip-audit --target gmail-inbox-agent --input findings/pip-audit.json
-task scan:pip-audit
-task scan:gmail-inbox-agent
-uv run github-agent plan-issues --input findings/trivy.json
+task status
+uv run github-agent status
 ```
 
 ## Safety Expectations
 
 - Default to dry-run.
-- Do not create or modify GitHub issues without an explicit apply mode.
-- Scan one agent at a time and label findings with `target:<agent-name>`.
-- Never commit scanner reports that may include private paths or dependency metadata.
+- Do not create or modify GitHub issues, PRs, or reviews without an explicit apply mode.
+- Prefer GitHub-native security alerts and Dependabot PRs over duplicate local scanner output.
+- Never commit exported alert data, tokens, logs, or local runtime state.
 - Keep issue labels deterministic so scheduled runs can deduplicate work.
 - Treat automated fixes as pull-request proposals, not direct pushes to `main`.
 
@@ -51,7 +48,7 @@ Update docs when behavior changes:
 Use conventional commit titles with the `github-agent` scope:
 
 ```text
-feat(github-agent): Add Trivy issue planner
-fix(github-agent): Deduplicate scanner findings
-docs(github-agent): Document scheduled scans
+feat(github-agent): Add Dependabot alert evaluation
+fix(github-agent): Skip noisy code scanning alert
+docs(github-agent): Document native security signal review
 ```

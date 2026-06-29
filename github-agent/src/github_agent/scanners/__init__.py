@@ -1,2 +1,0 @@
-"""Scanner report parsers."""
-

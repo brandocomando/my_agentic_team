@@ -7,11 +7,9 @@
 *.p12
 *.pfx
 
-# Runtime scanner data
+# Runtime exported alert data
 data/*
 !data/.gitkeep
-findings/*
-!findings/.gitkeep
 logs/
 *.log
 
@@ -22,4 +20,3 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 *.py[cod]
-
