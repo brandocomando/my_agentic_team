@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Survey Copilot Sample Survey</title>
+    <style>
+      body {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 18px;
+        color: #18202f;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      form {
+        display: grid;
+        gap: 18px;
+      }
+
+      fieldset,
+      label.block,
+      .custom-question {
+        display: grid;
+        gap: 10px;
+        border: 1px solid #d8dde8;
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      legend {
+        font-weight: 700;
+      }
+
+      select,
+      input[type="text"] {
+        min-height: 36px;
+        border: 1px solid #d8dde8;
+        border-radius: 6px;
+        padding: 6px 8px;
+      }
+
+      [role="radio"],
+      [role="option"] {
+        border: 1px solid #d8dde8;
+        border-radius: 6px;
+        cursor: pointer;
+        padding: 8px 10px;
+      }
+
+      [aria-checked="true"],
+      [aria-selected="true"] {
+        border-color: #146ef5;
+        background: #e8f1ff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sample Survey</h1>
+    <form>
+      <fieldset>
+        <legend>What is your age range?</legend>
+        <label><input type="radio" name="age" value="25-34"> 25-34</label>
+        <label><input type="radio" name="age" value="35-44"> 35-44</label>
+        <label><input type="radio" name="age" value="45-54"> 45-54</label>
+      </fieldset>
+
+      <label class="block">
+        Which household income range best describes you?
+        <select name="income">
+          <option value="">Choose one</option>
+          <option value="50-99">$50k-$99k</option>
+          <option value="100-149">$100k-$149k</option>
+          <option value="150-plus">$150k+</option>
+        </select>
+      </label>
+
+      <fieldset>
+        <legend>Have you shopped at a grocery store in the past 3 days?</legend>
+        <label><input type="radio" name="recent-grocery" value="yes"> Yes</label>
+        <label><input type="radio" name="recent-grocery" value="no"> No</label>
+      </fieldset>
+
+      <label class="block">
+        What smartphone do you primarily use?
+        <input type="text" name="phone" placeholder="Example: iPhone">
+      </label>
+
+      <section class="custom-question">
+        <h2>Which operating system do you use most often?</h2>
+        <div role="radiogroup" aria-label="Operating system">
+          <div role="radio" aria-checked="false" tabindex="0" data-value="macOS">macOS</div>
+          <div role="radio" aria-checked="false" tabindex="0" data-value="Windows">Windows</div>
+          <div role="radio" aria-checked="false" tabindex="0" data-value="Linux">Linux</div>
+        </div>
+      </section>
+
+      <script>
+        document.querySelectorAll('[role="radio"]').forEach((option) => {
+          option.addEventListener("click", () => {
+            option
+              .closest('[role="radiogroup"]')
+              .querySelectorAll('[role="radio"]')
+              .forEach((candidate) => candidate.setAttribute("aria-checked", "false"));
+            option.setAttribute("aria-checked", "true");
+          });
+        });
+      </script>
+    </form>
+  </body>
+</html>

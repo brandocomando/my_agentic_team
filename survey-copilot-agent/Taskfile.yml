@@ -1,0 +1,33 @@
+version: "3"
+
+tasks:
+  test:
+    desc: Run extension unit tests
+    cmds:
+      - npm test
+
+  validate:
+    desc: Run all local validation
+    cmds:
+      - npm run validate
+
+  llm:serve:
+    desc: Start the optional local LLM helper
+    cmds:
+      - npm run llm:serve
+
+  llm:ollama:
+    desc: Start the optional local LLM helper with Ollama
+    cmds:
+      - LLM_PROVIDER=ollama npm run llm:serve
+
+  llm:openai:
+    desc: Start the optional local LLM helper with OpenAI
+    cmds:
+      - LLM_PROVIDER=openai npm run llm:serve
+
+  extension:path:
+    desc: Print the unpacked Chrome extension path
+    cmds:
+      - pwd
+      - echo "Load the extension/ directory in chrome://extensions"

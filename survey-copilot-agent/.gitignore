@@ -1,0 +1,17 @@
+# Local profile exports, run artifacts, and packaged extensions
+.env
+.env.*
+!.env.example
+data/*.json
+data/*.sqlite
+data/*.sqlite-*
+data/*.db
+data/*.db-*
+logs/
+dist/
+*.crx
+*.pem
+
+# Node local state
+node_modules/
+.npm/
