@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 import re
 import time
+from urllib.parse import urlparse
 
 from personal_finance_agent.exporters.browser import ensure_download_dir, require_playwright
 
@@ -1114,12 +1115,20 @@ def _has_visible(page, selectors: list[str]) -> bool:
     return False
 
 
+def _is_target_url(url: str) -> bool:
+    try:
+        hostname = (urlparse(url).hostname or "").lower()
+    except Exception:
+        return False
+    return hostname == "target.com" or hostname.endswith(".target.com")
+
+
 def _find_target_page(browser):
     pages = [page for context in browser.contexts for page in context.pages]
     if not pages:
         raise RuntimeError("No Chrome tabs are available through the CDP session.")
     for page in pages:
-        if "target.com" in page.url.lower():
+        if _is_target_url(page.url):
             return page
     return pages[0]
 
