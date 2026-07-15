@@ -1,0 +1,27 @@
+# Local environment
+.env
+.env.*
+!.env.example
+.venv/
+config/*.local.yaml
+
+# Python/runtime artifacts
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+
+# Private financial data and generated outputs
+data/*
+!data/.gitkeep
+imports/bank/*
+!imports/bank/.gitkeep
+imports/amazon/*
+!imports/amazon/.gitkeep
+imports/target/*
+!imports/target/.gitkeep
+exports/*
+!exports/.gitkeep
+!exports/review/
+exports/review/*
+!exports/review/.gitkeep

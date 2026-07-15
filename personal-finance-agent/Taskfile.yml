@@ -1,0 +1,119 @@
+version: "3"
+
+vars:
+  MONTH: '{{default "2026-06" .MONTH}}'
+  CDP_URL: "http://localhost:9222"
+  CDP_PORT: "9222"
+  CHROME_PROFILE: "{{.HOME}}/.finance-agent-chrome"
+  CHROME_APP: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+tasks:
+  sync:
+    desc: Install dependencies
+    cmds:
+      - uv sync --extra dev
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run --extra dev pytest
+
+  llm-check:
+    desc: Check Ollama connectivity and configured model
+    cmds:
+      - uv run python app.py llm-check
+
+  rules:
+    desc: Manage learned merchant rules; pass subcommands with `--`
+    cmds:
+      - uv run python app.py rules {{.CLI_ARGS}}
+
+  rules:list:
+    desc: List learned merchant rules
+    cmds:
+      - uv run python app.py rules list
+
+  run:
+    desc: Run the finance agent directly; pass args with `--`
+    cmds:
+      - uv run python app.py {{.CLI_ARGS}}
+
+  import:
+    desc: Import one bank CSV; pass --file and optional --source with `--`
+    cmds:
+      - uv run python app.py import {{.CLI_ARGS}}
+
+  categorize:
+    desc: Categorize transactions for MONTH
+    cmds:
+      - uv run python app.py categorize --month {{.MONTH}} {{.CLI_ARGS}}
+
+  review:
+    desc: Import, categorize, and export needs-review CSV for MONTH
+    cmds:
+      - uv run python app.py review --month {{.MONTH}} {{.CLI_ARGS}}
+
+  apply-review:
+    desc: Apply edited review CSV corrections for MONTH
+    cmds:
+      - uv run python app.py apply-review --month {{.MONTH}} {{.CLI_ARGS}}
+
+  report:
+    desc: Generate Excel and Markdown reports for MONTH
+    cmds:
+      - uv run python app.py report --month {{.MONTH}} {{.CLI_ARGS}}
+
+  report:combined:
+    desc: Generate one Excel workbook across imported months
+    cmds:
+      - uv run python app.py report-combined {{.CLI_ARGS}}
+
+  full-run:
+    desc: Import, categorize, export review CSV, and generate reports for MONTH
+    cmds:
+      - uv run python app.py full-run --month {{.MONTH}} {{.CLI_ARGS}}
+
+  deterministic-review:
+    desc: Run review for MONTH without Ollama
+    cmds:
+      - task review MONTH={{.MONTH}} -- --no-llm {{.CLI_ARGS}}
+
+  deterministic-full-run:
+    desc: Run full workflow for MONTH without Ollama
+    cmds:
+      - task full-run MONTH={{.MONTH}} -- --no-llm {{.CLI_ARGS}}
+
+  export:install:
+    desc: Install browser exporter dependencies
+    cmds:
+      - uv sync --extra dev --extra export
+
+  chrome:
+    desc: Start a dedicated Chrome profile with remote debugging enabled
+    cmds:
+      - '"{{.CHROME_APP}}" --remote-debugging-port={{.CDP_PORT}} --user-data-dir="{{.CHROME_PROFILE}}"'
+
+  chrome:cdp:
+    desc: Alias for chrome
+    cmds:
+      - task chrome
+
+  export:empower:
+    desc: Attach to Chrome and export Empower transactions for MONTH
+    cmds:
+      - uv run --extra export python app.py export empower --month {{.MONTH}} --cdp-url {{.CDP_URL}} {{.CLI_ARGS}}
+
+  export:amazon:
+    desc: Attach to Chrome and export Amazon order items for MONTH
+    cmds:
+      - uv run --extra export python app.py export amazon --month {{.MONTH}} --cdp-url {{.CDP_URL}} {{.CLI_ARGS}}
+
+  export:amazon-cdp:
+    desc: Alias for export:amazon
+    cmds:
+      - task export:amazon MONTH={{.MONTH}} -- {{.CLI_ARGS}}
+
+  export:target:
+    desc: Attach to Chrome and export Target order items for MONTH
+    cmds:
+      - uv run --extra export python app.py export target --month {{.MONTH}} --cdp-url {{.CDP_URL}} {{.CLI_ARGS}}

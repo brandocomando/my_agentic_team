@@ -9,7 +9,7 @@ A public, practical collection of local-first agents I use to automate parts of 
 | [Gmail Inbox Agent](gmail-inbox-agent/README.md) | Testing | Reviews Gmail inbox messages, labels important mail, archives low-value mail, and sends a summary report. |
 | GitHub Agent | Not started | Planned repo analysis for vulnerabilities, bugs, and maintenance tasks. |
 | Calendar Agent | Not started | Planned calendar triage and scheduling support. |
-| Finance/Expenses Agent | Not started | Planned expense and finance workflow automation. |
+| [Personal Finance Agent](personal-finance-agent/README.md) | MVP | Imports bank CSVs, categorizes spending, exports review files, and generates monthly reports. |
 | AWS Agent | Not started | Planned cloud/account operations assistant. |
 | Job/Consulting Search Agent | Not started | Planned lead tracking and opportunity search. |
 | Paid Survey/Expert Networks Agent | Not started | Planned opportunity screening. |
