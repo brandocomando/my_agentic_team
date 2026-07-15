@@ -1,0 +1,33 @@
+[project]
+name = "personal-finance-agent"
+version = "0.1.0"
+description = "Local-first personal finance categorization and monthly reporting agent"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "langgraph>=1.2.9",
+  "openpyxl>=3.1.0",
+  "pydantic>=2.11.0",
+  "pydantic-settings>=2.10.0",
+  "python-dotenv>=1.1.0",
+  "rich>=14.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.0",
+]
+export = [
+  "playwright>=1.49.0",
+]
+
+[project.scripts]
+personal-finance-agent = "personal_finance_agent.main:main"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

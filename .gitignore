@@ -74,6 +74,8 @@ docs/_build/
 # PyBuilder
 .pybuilder/
 target/
+!personal-finance-agent/imports/target/
+!personal-finance-agent/imports/target/.gitkeep
 
 # Jupyter Notebook
 .ipynb_checkpoints

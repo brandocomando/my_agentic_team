@@ -1,0 +1,8 @@
+rules:
+  private_example:
+    merchants:
+      - PRIVATE MERCHANT NAME
+    category: Other Discretionary
+    subcategory: Private Detail
+    confidence: 0.95
+    note: Local-only rule example. Copy this file to categories.local.yaml.

@@ -1,0 +1,72 @@
+rules:
+  groceries:
+    merchants:
+      - ALDI
+      - TRADER JOE
+      - RALPHS
+      - SPROUTS
+      - COSTCO
+    category: Groceries
+
+  restaurants:
+    keywords:
+      - STARBUCKS
+      - CHIPOTLE
+      - MCDONALD
+      - RESTAURANT
+      - DOORDASH
+      - UBER EATS
+    category: Restaurants
+
+  subscriptions:
+    merchants:
+      - AMAZON KINDLE
+      - AMAZON WEB SERVICES
+      - AWS
+      - OPENAI
+      - DISNEY
+      - AUDIBLE
+      - KINDLE
+      - NETFLIX
+      - SPOTIFY
+      - APPLE.COM/BILL
+    category: Subscriptions
+
+  household_kids:
+    merchants:
+      - AMAZON
+      - TARGET
+      - WALMART
+    category: Household & Kids
+    confidence: low
+    note: Department-store merchants should be reviewed or enriched with item-level exports.
+
+  transfers:
+    merchants:
+      - SCHOOLSFIRST FEDERAL CREDIT UNION
+    keywords:
+      - CREDIT CARD PAYMENT
+      - TRANSFER
+      - PAYMENT THANK YOU
+      - AUTOPAY
+    category: Transfers / Credit Card Payments
+    subcategory: Loan Payment
+    exclude_from_spending: true
+
+  savings_investing:
+    keywords:
+      - BROKERAGE
+      - INVESTMENT
+      - VANGUARD
+      - FIDELITY
+      - SCHWAB
+    category: Savings / Investing
+    exclude_from_spending: true
+
+  income:
+    keywords:
+      - PAYROLL
+      - DIRECT DEP
+      - SALARY
+    category: Income
+    exclude_from_spending: true
