@@ -1,0 +1,64 @@
+filters:
+  site_type_exclude:
+    - TENT ONLY
+    - Hike/Bike
+    - Equestrian
+    - Group
+
+search_sets:
+  - name: california-rv-thu-sun
+    discovery:
+      states:
+        - CA
+      camping_type: rv
+      limit: 25
+      requires_potable_water: true
+      requires_flush_toilets: true
+      name_exclude:
+        - Equestrian
+        - Group
+    campground_ids:
+      - RecreationDotGov:232447:1074
+    exclude_campground_ids: []
+    availability:
+      start: 2026-08-01
+      end: 2026-09-30
+      nights: 3
+      check_in_weekdays:
+        - Thursday
+    filters:
+      site_type_exclude: []
+
+searches:
+  - name: reservecalifornia-park-707-662-thu-sun-2026
+    campground:
+      name: ReserveCalifornia Park 707 662
+      provider: reservecalifornia
+      url: https://www.reservecalifornia.com/park/707/662
+    date_window:
+      start: 2026-08-01
+      end: 2026-11-30
+      nights: 3
+      check_in_weekdays: [Thursday]
+    filters: {}
+    require_login: false
+    alert:
+      methods: [terminal, bell]
+
+  - name: yosemite-upper-pines-thu-sun
+    campground:
+      name: Yosemite Upper Pines
+      url: https://www.recreation.gov/camping/campgrounds/232447
+    date_window:
+      start: 2026-08-01
+      end: 2026-09-30
+      nights: 3
+      check_in_weekdays: [Thursday]
+    filters:
+      site_types: [STANDARD NONELECTRIC]
+      equipment: Tent
+      min_vehicle_length: 0
+      accessible: false
+    require_login: true
+    alert:
+      methods: [terminal, bell]

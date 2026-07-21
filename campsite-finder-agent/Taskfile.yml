@@ -1,0 +1,48 @@
+version: "3"
+
+vars:
+  CDP_URL: "http://localhost:9222"
+  CDP_PORT: "9222"
+  CHROME_PROFILE: "{{.HOME}}/.campsite-finder-chrome"
+  CHROME_APP: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+tasks:
+  sync:
+    desc: Install dependencies
+    cmds:
+      - uv sync --extra dev --extra browser
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run --extra dev pytest
+
+  chrome:
+    desc: Start a dedicated Chrome profile with remote debugging enabled
+    cmds:
+      - '"{{.CHROME_APP}}" --remote-debugging-port={{.CDP_PORT}} --user-data-dir="{{.CHROME_PROFILE}}"'
+
+  run:
+    desc: Run the campsite finder directly; pass args with `--`
+    cmds:
+      - uv run --extra browser python app.py {{.CLI_ARGS}}
+
+  scan:
+    desc: Scan configured Recreation.gov campgrounds once
+    cmds:
+      - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --once {{.CLI_ARGS}}
+
+  discover:
+    desc: Discover Outdoorithm campground IDs for a state, e.g. `task discover -- CA`
+    cmds:
+      - uv run python app.py --discover-state {{.CLI_ARGS}}
+
+  watch:
+    desc: Keep scanning configured Recreation.gov campgrounds
+    cmds:
+      - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --watch {{.CLI_ARGS}}
+
+  hourly:
+    desc: Keep scanning configured campgrounds every hour
+    cmds:
+      - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --watch --interval-seconds 3600 {{.CLI_ARGS}}
