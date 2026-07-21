@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="/Users/bfoster/Documents/my_agentic_team/campsite-finder-agent"
+PROJECT_DIR="/opt/personal/my_agentic_team/campsite-finder-agent"
 LOG_DIR="$PROJECT_DIR/data/logs"
 LOG_FILE="$LOG_DIR/hourly-scan.log"
 

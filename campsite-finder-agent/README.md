@@ -72,7 +72,7 @@ crontab -e
 Add:
 
 ```cron
-0 * * * * /Users/bfoster/Documents/my_agentic_team/campsite-finder-agent/scripts/hourly_scan.sh
+0 * * * * /opt/personal/my_agentic_team/campsite-finder-agent/scripts/hourly_scan.sh
 ```
 
 The cron job writes logs to `data/logs/hourly-scan.log`. The script runs one scan, updates the latest `data/matches.json` and `data/matches.csv`, and also keeps timestamped match archives.
