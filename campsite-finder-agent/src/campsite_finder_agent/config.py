@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     request_delay_seconds: float = Field(default=2.5, alias="CAMPSITE_REQUEST_DELAY_SECONDS")
     search_delay_seconds: float = Field(default=8.0, alias="CAMPSITE_SEARCH_DELAY_SECONDS")
     max_retries: int = Field(default=4, alias="CAMPSITE_MAX_RETRIES")
+    ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
+    ollama_model: str = Field(default="llama3.1", alias="OLLAMA_MODEL")
     outdoorithm_api_key: str = Field(default="", alias="OUTDOORITHM_API_KEY")
 
 

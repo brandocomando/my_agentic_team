@@ -51,6 +51,23 @@ searches:
 
 The example above looks for Thursday check-ins with a Sunday checkout, which is three nights.
 
+Searches and search sets can include AI preferences used by the Ollama review step:
+
+```yaml
+preferences:
+  likes:
+    - beach or coastal campgrounds
+    - RV-compatible sites
+  dislikes:
+    - tent-only sites
+    - equestrian sites
+  must_haves:
+    - three-night stays
+  nice_to_haves:
+    - short drive from home
+  notes: Prefer practical weekend trips over remote primitive camping.
+```
+
 ## Commands
 
 ```bash
@@ -61,7 +78,7 @@ task scan
 task run -- --config config/searches.yaml --once
 ```
 
-`scan` writes aggregated availability windows to `data/matches.json` and `data/matches.csv`, then prints a compact summary. The output keeps one representative site per campground/check-in date, then merges consecutive check-in dates into a single window so a long run of availability does not flood the report. Use `--watch --interval-seconds 300` to keep polling.
+`scan` writes aggregated availability windows to `data/matches.json` and `data/matches.csv` when matches are found, then prints a compact summary. If no visible matches are found, it removes any existing latest match files instead of writing empty outputs. The output keeps one representative site per campground/check-in date, then merges consecutive check-in dates into a single window so a long run of availability does not flood the report. Use `--watch --interval-seconds 300` to keep polling.
 
 For a system-scheduled hourly run, use cron with the included one-shot script:
 
@@ -75,7 +92,7 @@ Add:
 0 * * * * /opt/personal/my_agentic_team/campsite-finder-agent/scripts/hourly_scan.sh
 ```
 
-The cron job writes logs to `data/logs/hourly-scan.log`. The script runs one scan, updates the latest `data/matches.json` and `data/matches.csv`, and also keeps timestamped match archives.
+The cron job writes logs to `data/logs/hourly-scan.log`. The script runs one scan, updates the latest `data/matches.json` and `data/matches.csv` when matches are found, removes stale latest files when no visible matches are found, and also keeps timestamped match archives for matching runs.
 
 On macOS, `launchd` is usually more reliable than cron. Install the included hourly LaunchAgent with:
 
@@ -124,6 +141,19 @@ Tune those values with:
 
 ```bash
 task scan -- --request-delay-seconds 5 --search-delay-seconds 15 --max-retries 5
+```
+
+When visible matches are found, the scan tries to score and summarize them with Ollama. Configure Ollama with:
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1
+```
+
+AI analysis adds `ai_score`, `ai_fit`, reasons, concerns, and suggested state actions to the JSON and CSV outputs, plus `data/matches.ai.md`. If Ollama is unavailable, the scan logs a warning and still writes normal match outputs. Disable AI for a run with:
+
+```bash
+task scan -- --no-ai
 ```
 
 ReserveCalifornia searches use the site's grid availability endpoint through the attached browser session. The agent requests 21-day grid batches and parses per-site daily availability from the JSON response, which is much faster than clicking through every possible arrival date.

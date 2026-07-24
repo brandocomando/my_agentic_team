@@ -231,6 +231,7 @@ def discover_searches_for_search_set(
                 date_window=search_set.availability,
                 filters=search_set.filters,
                 alert=search_set.alert,
+                preferences=search_set.preferences,
                 require_login=False,
             )
         )

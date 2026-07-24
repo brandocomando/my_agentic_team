@@ -20,6 +20,18 @@ search_sets:
     campground_ids:
       - RecreationDotGov:232447:1074
     exclude_campground_ids: []
+    preferences:
+      likes:
+        - coastal or scenic campgrounds
+        - RV-compatible sites
+        - flush toilets and potable water
+      dislikes:
+        - equestrian sites
+        - tent-only sites
+        - group sites
+      must_haves:
+        - three-night Thursday check-in windows
+      notes: Prefer practical weekend trips over remote primitive camping.
     availability:
       start: 2026-08-01
       end: 2026-09-30
@@ -42,6 +54,9 @@ searches:
       check_in_weekdays: [Thursday]
     filters: {}
     require_login: false
+    preferences:
+      likes: [beach access, RV-compatible]
+      dislikes: [primitive, hike-in]
     alert:
       methods: [terminal, bell]
 

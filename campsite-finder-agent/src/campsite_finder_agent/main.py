@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from rich.console import Console
 
+from campsite_finder_agent.ai import analyze_match_windows_with_ollama, write_ai_summary
 from campsite_finder_agent.alerts import alert_match_windows
 from campsite_finder_agent.availability import find_matches
 from campsite_finder_agent.cache import load_cached_campground_campsites, save_cached_campground_campsites
@@ -34,6 +35,9 @@ def main() -> None:
     parser.add_argument("--raw-data-path", type=Path, default=settings.raw_data_path)
     parser.add_argument("--state-path", type=Path, default=settings.state_path)
     parser.add_argument("--discover-state", help="Discover Outdoorithm campground IDs for a state and write data/<STATE>.json.")
+    parser.add_argument("--no-ai", action="store_true", help="Skip Ollama scoring, summary, and suggested state actions.")
+    parser.add_argument("--ollama-base-url", default=settings.ollama_base_url)
+    parser.add_argument("--ollama-model", default=settings.ollama_model)
     parser.add_argument("--save-data", action="store_true", help="Save fetched campsite availability for offline reruns.")
     parser.add_argument("--use-saved-data", action="store_true", help="Use saved campsite availability instead of crawling.")
     parser.add_argument("--save-raw-data", action="store_true", help="Save raw provider JSON responses for debugging.")
@@ -78,19 +82,45 @@ def main() -> None:
         matches = aggregate_match_windows(raw_matches)
         state = load_state(args.state_path)
         visible_matches = filter_stateful_match_windows(matches, state)
+        ai_summary = ""
+        if visible_matches and not args.no_ai:
+            try:
+                ai_summary = analyze_match_windows_with_ollama(
+                    visible_matches,
+                    preferences_by_search(load_config(args.config)),
+                    model=args.ollama_model,
+                    base_url=args.ollama_base_url,
+                )
+                Console().print(ai_summary)
+            except Exception as exc:
+                Console().print(f"[yellow]Skipping AI analysis:[/yellow] {exc}")
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         output_path = run_output_path(args.output, run_id)
         csv_output_path = run_output_path(args.csv_output, run_id)
         alert_match_windows(visible_matches)
-        write_matches(output_path, visible_matches)
-        write_matches_csv(csv_output_path, visible_matches)
-        write_matches(args.output, visible_matches)
-        write_matches_csv(args.csv_output, visible_matches)
-        Console().print(
-            f"Wrote {len(visible_matches)} visible availability window(s) "
-            f"from {len(matches)} total window(s) and {len(raw_matches)} raw site match(es) "
-            f"to {output_path} and {csv_output_path}; updated latest at {args.output} and {args.csv_output}."
-        )
+        if visible_matches:
+            write_matches(output_path, visible_matches)
+            write_matches_csv(csv_output_path, visible_matches)
+            write_matches(args.output, visible_matches)
+            write_matches_csv(args.csv_output, visible_matches)
+            if ai_summary:
+                write_ai_summary(run_output_path(args.output.with_suffix(".ai.md"), run_id), ai_summary)
+                write_ai_summary(args.output.with_suffix(".ai.md"), ai_summary)
+            else:
+                remove_matches_file(args.output.with_suffix(".ai.md"))
+            Console().print(
+                f"Wrote {len(visible_matches)} visible availability window(s) "
+                f"from {len(matches)} total window(s) and {len(raw_matches)} raw site match(es) "
+                f"to {output_path} and {csv_output_path}; updated latest at {args.output} and {args.csv_output}."
+            )
+        else:
+            remove_matches_file(args.output)
+            remove_matches_file(args.csv_output)
+            remove_matches_file(args.output.with_suffix(".ai.md"))
+            Console().print(
+                f"No visible availability windows from {len(matches)} total window(s) "
+                f"and {len(raw_matches)} raw site match(es); removed latest output files if present."
+            )
         if not run_forever:
             break
         time.sleep(args.interval_seconds)
@@ -226,6 +256,13 @@ def discover_state_catalog(state: str) -> Path:
     return output_path
 
 
+def preferences_by_search(config: AppConfig) -> dict[str, object]:
+    preferences = {search.name: search.preferences for search in config.searches}
+    for search_set in config.search_sets:
+        preferences[search_set.name] = search_set.preferences
+    return preferences
+
+
 @dataclass(frozen=True)
 class SearchGroup:
     campground_url: str
@@ -307,7 +344,17 @@ def maybe_wait_between_network_searches(
     time.sleep(search_delay_seconds)
 
 
+def remove_matches_file(path: Path) -> None:
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
 def write_matches(path: Path, matches: list[MatchWindow]) -> None:
+    if not matches:
+        remove_matches_file(path)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = [match.model_dump(mode="json") for match in matches]
     with path.open("w") as handle:
@@ -320,6 +367,9 @@ def run_output_path(path: Path, run_id: str) -> Path:
 
 
 def write_matches_csv(path: Path, matches: list[MatchWindow]) -> None:
+    if not matches:
+        remove_matches_file(path)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(
@@ -341,6 +391,13 @@ def write_matches_csv(path: Path, matches: list[MatchWindow]) -> None:
                 "representative_loop",
                 "matching_campsite_ids",
                 "matching_start_count",
+                "ai_score",
+                "ai_fit",
+                "ai_reasons",
+                "ai_concerns",
+                "ai_summary",
+                "suggested_state_action",
+                "suggested_state_reason",
                 "unique_site_count",
             ],
         )
@@ -363,6 +420,13 @@ def write_matches_csv(path: Path, matches: list[MatchWindow]) -> None:
                     "representative_site_type": match.representative_site_type,
                     "representative_loop": match.representative_loop,
                     "matching_campsite_ids": "; ".join(match.matching_campsite_ids),
+                    "ai_score": match.ai_score,
+                    "ai_fit": match.ai_fit,
+                    "ai_reasons": "; ".join(match.ai_reasons),
+                    "ai_concerns": "; ".join(match.ai_concerns),
+                    "ai_summary": match.ai_summary,
+                    "suggested_state_action": match.suggested_state_action,
+                    "suggested_state_reason": match.suggested_state_reason,
                     "matching_start_count": match.matching_start_count,
                     "unique_site_count": match.unique_site_count,
                 }

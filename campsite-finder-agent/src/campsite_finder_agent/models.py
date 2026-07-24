@@ -103,12 +103,21 @@ class AlertConfig(BaseModel):
     methods: list[str] = Field(default_factory=lambda: ["terminal"])
 
 
+class AIPreferences(BaseModel):
+    likes: list[str] = Field(default_factory=list)
+    dislikes: list[str] = Field(default_factory=list)
+    must_haves: list[str] = Field(default_factory=list)
+    nice_to_haves: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+
 class SearchConfig(BaseModel):
     name: str
     campground: CampgroundConfig
     date_window: DateWindow
     filters: SiteFilters = Field(default_factory=SiteFilters)
     alert: AlertConfig = Field(default_factory=AlertConfig)
+    preferences: AIPreferences = Field(default_factory=AIPreferences)
     require_login: bool = True
 
 
@@ -120,6 +129,7 @@ class SearchSetConfig(BaseModel):
     availability: DateWindow
     filters: SiteFilters = Field(default_factory=SiteFilters)
     alert: AlertConfig = Field(default_factory=AlertConfig)
+    preferences: AIPreferences = Field(default_factory=AIPreferences)
 
 
 class AppConfig(BaseModel):
@@ -172,5 +182,12 @@ class MatchWindow(BaseModel):
     representative_site_type: str = ""
     representative_loop: str = ""
     matching_campsite_ids: list[str] = Field(default_factory=list)
+    ai_score: float | None = None
+    ai_fit: str = ""
+    ai_reasons: list[str] = Field(default_factory=list)
+    ai_concerns: list[str] = Field(default_factory=list)
+    ai_summary: str = ""
+    suggested_state_action: str = ""
+    suggested_state_reason: str = ""
     matching_start_count: int
     unique_site_count: int
