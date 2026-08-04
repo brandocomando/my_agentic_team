@@ -13,11 +13,11 @@ def infer_provider(search: SearchConfig) -> Provider:
     if search.campground.provider:
         return search.campground.provider
     hostname = str(search.campground.url.host or "").lower()
-    if "reservecalifornia.com" in hostname:
+    if hostname == "reservecalifornia.com" or hostname.endswith(".reservecalifornia.com"):
         return Provider.reserve_california
-    if "recreation.gov" in hostname:
+    if hostname == "recreation.gov" or hostname.endswith(".recreation.gov"):
         return Provider.recreation_gov
-    if "outdoorithm.com" in hostname:
+    if hostname == "outdoorithm.com" or hostname.endswith(".outdoorithm.com"):
         return Provider.outdoorithm
     raise RuntimeError(
         f"Could not infer provider for {search.campground.url}. "
