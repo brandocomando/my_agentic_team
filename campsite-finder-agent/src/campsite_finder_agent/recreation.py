@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from urllib.parse import urlparse
 
 from campsite_finder_agent.availability import (
     availability_api_url,
@@ -172,6 +173,7 @@ def _find_recreation_page(browser):
     if not pages:
         raise RuntimeError("No Chrome tabs are available through the CDP session.")
     for page in pages:
-        if "recreation.gov" in page.url.lower():
+        host = urlparse(page.url).hostname
+        if host and (host == "recreation.gov" or host.endswith(".recreation.gov")):
             return page
     return pages[0]
