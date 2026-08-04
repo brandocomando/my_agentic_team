@@ -364,6 +364,7 @@ def _find_reserve_california_page(browser):
     if not pages:
         raise RuntimeError("No Chrome tabs are available through the CDP session.")
     for page in pages:
-        if "reservecalifornia.com" in page.url.lower():
+        host = (urlparse(page.url).hostname or "").lower()
+        if host == "reservecalifornia.com" or host.endswith(".reservecalifornia.com"):
             return page
     return pages[0]
