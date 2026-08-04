@@ -64,6 +64,39 @@ def load_cached_campground_campsites(
     return [Campsite.model_validate(item) for item in payload.get("campsites", [])]
 
 
+def cached_ranges_for_campground(cache_path: Path, campground_url: str) -> list[tuple[date, date, Path]]:
+    ranges: list[tuple[date, date, Path]] = []
+    if not cache_path.exists():
+        return ranges
+    for path in cache_path.glob("*.json"):
+        try:
+            with path.open() as handle:
+                payload = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if payload.get("campground_url") != campground_url:
+            continue
+        start = payload.get("start")
+        end = payload.get("end")
+        if not isinstance(start, str) or not isinstance(end, str):
+            continue
+        try:
+            ranges.append((date.fromisoformat(start), date.fromisoformat(end), path))
+        except ValueError:
+            continue
+    return sorted(ranges, key=lambda item: (item[0], item[1], item[2].name))
+
+
+def describe_cached_ranges(cache_path: Path, campground_url: str, limit: int = 3) -> str:
+    ranges = cached_ranges_for_campground(cache_path, campground_url)
+    if not ranges:
+        return "no saved ranges for this campground"
+    snippets = [f"{start.isoformat()} to {end.isoformat()}" for start, end, _path in ranges[-limit:]]
+    extra = len(ranges) - len(snippets)
+    suffix = f" (+{extra} older)" if extra > 0 else ""
+    return f"saved ranges: {', '.join(snippets)}{suffix}"
+
+
 def save_cached_campground_campsites(
     cache_path: Path,
     campground_url: str,

@@ -51,6 +51,18 @@ searches:
 
 The example above looks for Thursday check-ins with a Sunday checkout, which is three nights.
 
+Dates can be fixed ISO dates or friendly relative dates. Relative dates resolve at scan startup, which keeps scheduled searches sliding forward:
+
+```yaml
+availability:
+  start: today
+  end: "+2months"
+  nights: 3
+  check_in_weekdays: [Friday]
+```
+
+Supported friendly values include `today`, `tomorrow`, `+10days`, `+2weeks`, and `+2months`. Short forms like `+10d`, `+2w`, and `+2mo` also work. Quote `+...` values in YAML.
+
 Searches and search sets can include AI preferences used by the Ollama review step:
 
 ```yaml
@@ -156,6 +168,20 @@ AI analysis adds `ai_score`, `ai_fit`, reasons, concerns, and suggested state ac
 task scan -- --no-ai
 ```
 
+AI-scored matches can also send Gmail alerts. The agent uses the same OAuth credential/token pattern as `gmail-inbox-agent`, not an SMTP password:
+
+```env
+CAMPSITE_EMAIL_ALERTS_ENABLED=true
+GMAIL_CREDENTIALS_PATH=./data/gmail_credentials.json
+GMAIL_TOKEN_PATH=./data/gmail_token.json
+CAMPSITE_EMAIL_TO=your_email@gmail.com
+CAMPSITE_AI_NOTIFY_MIN_SCORE=8.0
+CAMPSITE_AI_NOTIFY_ACTIONS=book
+CAMPSITE_NOTIFICATION_STATE_PATH=./data/notifications.json
+```
+
+An email is sent when a scored match meets the minimum score or has a suggested action in `CAMPSITE_AI_NOTIFY_ACTIONS`. Sent `state_key`s are recorded so the hourly scan does not send the same alert repeatedly. If Gmail auth fails, the scan logs a warning and still writes match outputs. If a copied token cannot refresh, delete `data/gmail_token.json` and run a scan once to complete a fresh OAuth flow.
+
 ReserveCalifornia searches use the site's grid availability endpoint through the attached browser session. The agent requests 21-day grid batches and parses per-site daily availability from the JSON response, which is much faster than clicking through every possible arrival date.
 
 Recreation.gov searches also use direct availability API requests through the attached browser session. The agent opens campground pages only when login is required or a fallback fetch is needed.
@@ -171,3 +197,14 @@ campground:
 ```
 
 Set `OUTDOORITHM_API_KEY` in `.env`. Outdoorithm requires attribution wherever its data is shown, and commercial use requires a license.
+
+## Roadmap
+
+Suggested improvements after the hourly scan has run for a while:
+
+- Add a strict offline mode that never fetches missing cache entries, useful for report and AI prompt testing.
+- Add cache coverage tooling that lists which campgrounds/date ranges are saved before a run starts.
+- Add per-search AI notification thresholds so beach, mountain, and local searches can alert at different scores.
+- Add a small review command that marks `state_key`s as ignored, watched, or booked from the latest CSV/JSON output.
+- Add provider health metrics to the hourly log, including 429/503 counts and time spent waiting on retries.
+- Add an optional digest email for all good matches, separate from urgent single-match notifications.

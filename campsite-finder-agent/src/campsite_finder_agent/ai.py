@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field, ValidationError
 
 from campsite_finder_agent.models import AIPreferences, MatchWindow
+
+AI_MATCH_BATCH_SIZE = 5
+AI_MISSING_RETRY_BATCH_SIZE = 1
 
 
 class AIMatchAnalysis(BaseModel):
@@ -35,7 +38,7 @@ def analyze_match_windows_with_ollama(
 ) -> str:
     if not matches:
         return ""
-    response = request_ollama_analysis(matches, preferences_by_search, model, base_url)
+    response = request_ollama_analysis_in_batches(matches, preferences_by_search, model, base_url)
     analyses = {item.state_key: item for item in response.matches}
     for match in matches:
         analysis = analyses.get(match.state_key)
@@ -51,49 +54,141 @@ def analyze_match_windows_with_ollama(
     return render_ai_summary(response, matches)
 
 
-def request_ollama_analysis(
+def request_ollama_analysis_in_batches(
     matches: list[MatchWindow],
     preferences_by_search: dict[str, AIPreferences],
     model: str,
     base_url: str,
 ) -> AIAnalysisResponse:
-    payload = {
+    responses: list[AIAnalysisResponse] = []
+    for batch in chunked(matches, AI_MATCH_BATCH_SIZE):
+        response = request_ollama_analysis(batch, preferences_by_search, model, base_url, require_complete=False)
+        responses.append(response)
+        missing = missing_matches(response, batch)
+        if missing:
+            responses.extend(
+                request_ollama_analysis(retry_batch, preferences_by_search, model, base_url, require_complete=False)
+                for retry_batch in chunked(missing, AI_MISSING_RETRY_BATCH_SIZE)
+            )
+    analyses = dedupe_analyses([analysis for response in responses for analysis in response.matches])
+    skipped = sorted({match.state_key for match in matches} - {analysis.state_key for analysis in analyses})
+    summary = combined_summary(responses)
+    if skipped:
+        sample = ", ".join(skipped[:3])
+        skipped_summary = f"Ollama skipped {len(skipped)} match(es): {sample}."
+        summary = f"{summary} {skipped_summary}" if summary else skipped_summary
+    if not analyses:
+        raise RuntimeError(f"Ollama did not score any of {len(matches)} match(es)")
+    return AIAnalysisResponse(summary=summary, matches=analyses)
+
+
+def missing_matches(response: AIAnalysisResponse, matches: list[MatchWindow]) -> list[MatchWindow]:
+    returned = {analysis.state_key for analysis in response.matches}
+    return [match for match in matches if match.state_key not in returned]
+
+
+def dedupe_analyses(analyses: list[AIMatchAnalysis]) -> list[AIMatchAnalysis]:
+    by_key: dict[str, AIMatchAnalysis] = {}
+    for analysis in analyses:
+        by_key[analysis.state_key] = analysis
+    return list(by_key.values())
+
+
+def chunked(values: list[MatchWindow], size: int) -> list[list[MatchWindow]]:
+    return [values[index : index + size] for index in range(0, len(values), size)]
+
+
+def combined_summary(responses: list[AIAnalysisResponse]) -> str:
+    summaries = [response.summary.strip() for response in responses if response.summary.strip()]
+    if not summaries:
+        return "AI scored the visible campsite matches."
+    if len(summaries) == 1:
+        return summaries[0]
+    return " ".join(summaries)
+
+
+def request_ollama_analysis(
+    matches: list[MatchWindow],
+    preferences_by_search: dict[str, AIPreferences],
+    model: str,
+    base_url: str,
+    require_complete: bool = True,
+) -> AIAnalysisResponse:
+    user_payload = json.dumps(
+        {
+            "preferences_by_search": serialized_preferences(preferences_by_search),
+            "matches": [match_payload(match) for match in matches],
+        },
+        indent=2,
+    )
+    chat_payload = {
         "model": model,
         "stream": False,
         "format": "json",
         "messages": [
             {"role": "system", "content": system_prompt()},
-            {
-                "role": "user",
-                "content": json.dumps(
-                    {
-                        "preferences_by_search": serialized_preferences(preferences_by_search),
-                        "matches": [match_payload(match) for match in matches],
-                    },
-                    indent=2,
-                ),
-            },
+            {"role": "user", "content": user_payload},
         ],
     }
+    try:
+        raw = post_ollama_json(base_url, "/api/chat", chat_payload)
+        response = parse_ollama_analysis(raw.get("message", {}).get("content", ""), "/api/chat")
+    except HTTPError as exc:
+        if exc.code != 404:
+            raise RuntimeError(f"Ollama {model} request to /api/chat failed: {exc}") from exc
+        response = request_ollama_generate(user_payload, model, base_url)
+    except URLError as exc:
+        try:
+            response = request_ollama_generate(user_payload, model, base_url)
+        except URLError:
+            raise RuntimeError(f"Could not reach Ollama at {base_url}: {exc}") from exc
+    if require_complete:
+        validate_analysis_coverage(response, matches)
+    return response
+
+
+def request_ollama_generate(user_payload: str, model: str, base_url: str) -> AIAnalysisResponse:
+    raw = post_ollama_json(
+        base_url,
+        "/api/generate",
+        {
+            "model": model,
+            "stream": False,
+            "format": "json",
+            "prompt": f"{system_prompt()}\n\nInput JSON:\n{user_payload}",
+        },
+    )
+    return parse_ollama_analysis(raw.get("response", ""), "/api/generate")
+
+
+def post_ollama_json(base_url: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
     request = Request(
-        f"{base_url.rstrip('/')}/api/chat",
+        f"{base_url.rstrip('/')}{path}",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
-    try:
-        with urlopen(request, timeout=45) as response:
-            raw = json.loads(response.read().decode("utf-8"))
-    except URLError as exc:
-        raise RuntimeError(f"Could not reach Ollama at {base_url}: {exc}") from exc
-    content = raw.get("message", {}).get("content", "")
+    with urlopen(request, timeout=45) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def parse_ollama_analysis(content: str, endpoint: str) -> AIAnalysisResponse:
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Ollama returned non-JSON content: {content[:300]}") from exc
+        raise RuntimeError(f"Ollama {endpoint} returned non-JSON content: {content[:300]}") from exc
     try:
         return AIAnalysisResponse.model_validate(parsed)
     except ValidationError as exc:
-        raise RuntimeError(f"Ollama JSON did not match expected schema: {exc}") from exc
+        raise RuntimeError(f"Ollama {endpoint} JSON did not match expected schema: {exc}") from exc
+
+
+def validate_analysis_coverage(response: AIAnalysisResponse, matches: list[MatchWindow]) -> None:
+    expected = {match.state_key for match in matches}
+    returned = {analysis.state_key for analysis in response.matches}
+    missing = sorted(expected - returned)
+    if missing:
+        sample = ", ".join(missing[:3])
+        raise RuntimeError(f"Ollama did not score {len(missing)} match(es): {sample}")
 
 
 def system_prompt() -> str:
@@ -115,6 +210,7 @@ Return only JSON matching this schema:
     }
   ]
 }
+You must return exactly one matches item for every input match state_key.
 Use preferences from any matching search name. Do not invent facts beyond the input.
 Use "book" only for exceptionally strong fits; otherwise prefer "watch" or "ignore".
 """.strip()

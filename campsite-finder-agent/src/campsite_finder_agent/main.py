@@ -13,9 +13,9 @@ from urllib.parse import urlparse
 from rich.console import Console
 
 from campsite_finder_agent.ai import analyze_match_windows_with_ollama, write_ai_summary
-from campsite_finder_agent.alerts import alert_match_windows
+from campsite_finder_agent.alerts import EmailAlertSettings, alert_match_windows, notify_ai_match_windows
 from campsite_finder_agent.availability import find_matches
-from campsite_finder_agent.cache import load_cached_campground_campsites, save_cached_campground_campsites
+from campsite_finder_agent.cache import describe_cached_ranges, load_cached_campground_campsites, save_cached_campground_campsites
 from campsite_finder_agent.config import load_config, load_settings
 from campsite_finder_agent.models import AppConfig, DateWindow, Match, MatchWindow, SearchConfig
 from campsite_finder_agent.outdoorithm import discover_campground_catalog_for_state, discover_searches_for_search_set
@@ -99,6 +99,8 @@ def main() -> None:
         csv_output_path = run_output_path(args.csv_output, run_id)
         alert_match_windows(visible_matches)
         if visible_matches:
+            if ai_summary:
+                notify_ai_match_windows(visible_matches, email_alert_settings(settings))
             write_matches(output_path, visible_matches)
             write_matches_csv(csv_output_path, visible_matches)
             write_matches(args.output, visible_matches)
@@ -124,6 +126,22 @@ def main() -> None:
         if not run_forever:
             break
         time.sleep(args.interval_seconds)
+
+
+def email_alert_settings(settings) -> EmailAlertSettings:
+    return EmailAlertSettings(
+        enabled=settings.email_alerts_enabled,
+        gmail_credentials_path=settings.gmail_credentials_path,
+        gmail_token_path=settings.gmail_token_path,
+        recipient=settings.email_to,
+        min_score=settings.ai_notify_min_score,
+        actions=parse_actions(settings.ai_notify_actions),
+        state_path=settings.notification_state_path,
+    )
+
+
+def parse_actions(value: str) -> set[str]:
+    return {item.strip().lower() for item in value.split(",") if item.strip()}
 
 
 def run_scan(
@@ -159,7 +177,11 @@ def run_scan(
                 if not save_data:
                     console.print(f"[yellow]Skipping {group.campground_name}; saved data unavailable:[/yellow] {exc}")
                     continue
-                console.print(f"[yellow]Saved data missing for {group.campground_name}; fetching it now.[/yellow]")
+                cache_hint = describe_cached_ranges(cache_path, group.campground_url)
+                console.print(
+                    f"[yellow]Saved data missing for {group.campground_name} "
+                    f"({group.start.isoformat()} to {group.end.isoformat()}); {cache_hint}; fetching it now.[/yellow]"
+                )
                 try:
                     maybe_wait_between_network_searches(
                         console,

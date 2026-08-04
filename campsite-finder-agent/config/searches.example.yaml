@@ -33,8 +33,8 @@ search_sets:
         - three-night Thursday check-in windows
       notes: Prefer practical weekend trips over remote primitive camping.
     availability:
-      start: 2026-08-01
-      end: 2026-09-30
+      start: today
+      end: +2months
       nights: 3
       check_in_weekdays:
         - Thursday
@@ -48,8 +48,8 @@ searches:
       provider: reservecalifornia
       url: https://www.reservecalifornia.com/park/707/662
     date_window:
-      start: 2026-08-01
-      end: 2026-11-30
+      start: today
+      end: +4months
       nights: 3
       check_in_weekdays: [Thursday]
     filters: {}
@@ -65,8 +65,8 @@ searches:
       name: Yosemite Upper Pines
       url: https://www.recreation.gov/camping/campgrounds/232447
     date_window:
-      start: 2026-08-01
-      end: 2026-09-30
+      start: today
+      end: +2months
       nights: 3
       check_in_weekdays: [Thursday]
     filters:

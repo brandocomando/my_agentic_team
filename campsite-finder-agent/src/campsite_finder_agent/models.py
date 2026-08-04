@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import date
+import calendar
+from datetime import date, timedelta
+import re
 from enum import StrEnum
 from typing import Any
 
@@ -31,11 +33,19 @@ class CampgroundConfig(BaseModel):
     outdoorithm_id: str | None = None
 
 
+RELATIVE_DATE_RE = re.compile(r"^([+-]\d+)\s*([a-zA-Z]+)$")
+
+
 class DateWindow(BaseModel):
     start: date
     end: date
     nights: int = Field(gt=0)
     check_in_weekdays: list[Weekday] = Field(default_factory=list)
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def resolve_friendly_date(cls, value: object) -> object:
+        return resolve_config_date(value)
 
     @field_validator("end")
     @classmethod
@@ -44,6 +54,37 @@ class DateWindow(BaseModel):
         if start and value < start:
             raise ValueError("end must be on or after start")
         return value
+
+
+def resolve_config_date(value: object, today: date | None = None) -> object:
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip().lower().replace(" ", "")
+    current = today or date.today()
+    if normalized == "today":
+        return current
+    if normalized == "tomorrow":
+        return current + timedelta(days=1)
+    match = RELATIVE_DATE_RE.match(normalized)
+    if not match:
+        return value
+    amount = int(match.group(1))
+    unit = match.group(2)
+    if unit in {"d", "day", "days"}:
+        return current + timedelta(days=amount)
+    if unit in {"w", "week", "weeks"}:
+        return current + timedelta(weeks=amount)
+    if unit in {"m", "mo", "mon", "month", "months"}:
+        return add_months(current, amount)
+    return value
+
+
+def add_months(value: date, months: int) -> date:
+    month_index = value.month - 1 + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
 
 
 class SiteFilters(BaseModel):

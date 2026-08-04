@@ -5,6 +5,7 @@ from datetime import date
 from campsite_finder_agent.cache import (
     cache_file_for_campground,
     cache_file_for_search,
+    describe_cached_ranges,
     load_cached_campsites,
     save_cached_campground_campsites,
     save_cached_campsites,
@@ -45,6 +46,15 @@ def test_cache_round_trips_campsites(tmp_path) -> None:
 
     assert path == cache_file_for_search(tmp_path, search)
     assert loaded == campsites
+
+
+def test_describe_cached_ranges_for_campground(tmp_path) -> None:
+    campground_url = "https://outdoorithm.com/campgrounds/ca/ronald-w-caspers-wilderness-park/ronald-w-caspers-wilderness-park"
+    campsite = Campsite(campsite_id="1", name="Site 1")
+    save_cached_campground_campsites(tmp_path, campground_url, date(2026, 8, 1), date(2026, 9, 30), [campsite])
+
+    assert describe_cached_ranges(tmp_path, campground_url) == "saved ranges: 2026-08-01 to 2026-09-30"
+    assert describe_cached_ranges(tmp_path, "https://example.test/missing") == "no saved ranges for this campground"
 
 
 def test_use_saved_data_with_save_data_fetches_missing_cache(tmp_path, monkeypatch) -> None:
