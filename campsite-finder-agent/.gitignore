@@ -1,0 +1,18 @@
+# Local environment
+.env
+.env.*
+!.env.example
+.venv/
+config/searches.yaml
+config/*.bak
+config/*.local.yaml
+
+# Python/runtime artifacts
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+
+# Runtime output
+data/*
+!data/.gitkeep

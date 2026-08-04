@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bfoster.campsite-finder-agent.hourly</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/personal/my_agentic_team/campsite-finder-agent/scripts/hourly_scan.sh</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>3600</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>WorkingDirectory</key>
+  <string>/opt/personal/my_agentic_team/campsite-finder-agent</string>
+
+  <key>StandardOutPath</key>
+  <string>/opt/personal/my_agentic_team/campsite-finder-agent/data/logs/launchd.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/opt/personal/my_agentic_team/campsite-finder-agent/data/logs/launchd.err.log</string>
+</dict>
+</plist>
