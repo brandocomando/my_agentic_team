@@ -171,7 +171,8 @@ def _llm_node(state: CategorizationState) -> CategorizationState:
             model=str(state["model"]),
             base_url=str(state["base_url"]),
         )
-        return {"llm_result": result, "result": _categorization_from_llm_result(result, float(state["threshold"]))}
+        parsed = _categorization_from_llm_result(result, float(state["threshold"]))
+        return {"llm_result": result, "result": _enforce_amount_sanity(state["tx"], parsed)}
     except Exception as exc:
         return {
             "result": Categorization(
@@ -200,6 +201,7 @@ def _llm_with_web_node(state: CategorizationState) -> CategorizationState:
             base_url=str(state["base_url"]),
         )
         parsed = _categorization_from_llm_result(result, float(state["threshold"]))
+        parsed = _enforce_amount_sanity(state["tx"], parsed)
         return {
             "result": Categorization(
                 category=parsed.category,
@@ -289,7 +291,7 @@ def apply_rules(
         confidence = rule.confidence
         if str(tx["normalized_merchant"]).upper() in LOW_CONFIDENCE_MERCHANTS:
             confidence = min(confidence, 0.65)
-        return Categorization(
+        result = Categorization(
             category=rule.category,
             subcategory=rule.subcategory,
             confidence=confidence,
@@ -298,6 +300,7 @@ def apply_rules(
             exclude_from_spending=rule.exclude_from_spending,
             source="rule",
         )
+        return _enforce_amount_sanity(tx, result)
     return None
 
 
@@ -307,7 +310,7 @@ def apply_source_category(tx: sqlite3.Row, low_confidence_threshold: float = 0.8
     if not mapped:
         return None
     confidence = 0.9
-    return Categorization(
+    result = Categorization(
         category=mapped,
         confidence=confidence,
         reason=f"Mapped source category '{source_category}' to budget category '{mapped}'.",
@@ -315,6 +318,7 @@ def apply_source_category(tx: sqlite3.Row, low_confidence_threshold: float = 0.8
         exclude_from_spending=mapped in EXCLUDED_SOURCE_CATEGORIES,
         source="source",
     )
+    return _enforce_amount_sanity(tx, result)
 
 
 def categorize_with_llm(
@@ -337,6 +341,7 @@ def categorize_with_llm(
                     base_url=base_url,
                 )
                 parsed = _categorization_from_llm_result(result, threshold)
+                parsed = _enforce_amount_sanity(tx, parsed)
                 return Categorization(
                     category=parsed.category,
                     confidence=parsed.confidence,
@@ -345,7 +350,7 @@ def categorize_with_llm(
                     exclude_from_spending=parsed.exclude_from_spending,
                     source="llm-web",
                 )
-        return _categorization_from_llm_result(result, threshold)
+        return _enforce_amount_sanity(tx, _categorization_from_llm_result(result, threshold))
     except Exception as exc:
         return Categorization(
             category="Needs Review",
@@ -377,6 +382,7 @@ Rules:
 - Never invent new categories.
 - Use Needs Review if uncertain.
 - Transfers, payments, and investing should be excluded from spending.
+- Negative amounts are spending or outflows; never categorize a negative amount as Income.
 - Target/Amazon/Costco should be lower confidence unless item-level details exist.
 - If the merchant is unknown and web search would help, set needs_web_search true and provide search_query.
 - If web search results are provided, use them as context but only choose a category when they are relevant.
@@ -420,3 +426,17 @@ def _categorization_from_llm_result(result: dict, threshold: float) -> Categoriz
         exclude_from_spending=bool(result.get("exclude_from_spending", False)),
         source="llm",
     )
+
+
+def _enforce_amount_sanity(tx: sqlite3.Row, result: Categorization) -> Categorization:
+    amount = float(tx["amount"])
+    if result.category == "Income" and amount < 0:
+        return Categorization(
+            category="Needs Review",
+            confidence=0.0,
+            reason=f"{result.reason} Rejected Income because the transaction amount is negative.",
+            needs_review=True,
+            exclude_from_spending=False,
+            source=result.source,
+        )
+    return result
