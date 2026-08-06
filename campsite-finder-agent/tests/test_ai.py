@@ -25,6 +25,7 @@ def make_match_window(state_key: str = "state-1") -> MatchWindow:
         representative_site_type="STANDARD",
         representative_loop="Beach Loop",
         matching_campsite_ids=["101"],
+        unlock_times=["2026-08-05T08:00:00"],
         matching_start_count=1,
         unique_site_count=1,
     )
@@ -36,7 +37,11 @@ def test_match_payload_contains_review_fields() -> None:
     assert payload["state_key"] == "state-1"
     assert payload["campground_id"] == "ReserveCalifornia:709"
     assert payload["campground_name"] == "San Elijo State Beach"
+    assert payload["campground_url"] == "https://outdoorithm.com/campgrounds/ca/san-elijo-sb/san-elijo-state-beach"
+    assert payload["check_in_date"] == "2026-08-06"
     assert payload["nights"] == 3
+    assert payload["representative_campsite_name"] == "Site 101"
+    assert payload["unlock_times"] == ["2026-08-05T08:00:00"]
 
 
 def test_analyze_match_windows_with_ollama_enriches_matches(monkeypatch) -> None:
@@ -93,6 +98,9 @@ def test_analyze_match_windows_with_ollama_enriches_matches(monkeypatch) -> None
     assert match.ai_concerns == ["popular campground"]
     assert match.suggested_state_action == "book"
     assert match.suggested_state_reason == "Matches key preferences."
+    assert "URL: https://outdoorithm.com/campgrounds/ca/san-elijo-sb/san-elijo-state-beach" in summary
+    assert "Check-in: 2026-08-06 | Nights: 3 | Campsite: Site 101" in summary
+    assert "Unlock times: 2026-08-05T08:00:00" in summary
 
 
 def test_analyze_match_windows_scores_large_batches_in_chunks(monkeypatch) -> None:

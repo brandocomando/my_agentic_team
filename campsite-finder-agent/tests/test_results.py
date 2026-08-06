@@ -6,7 +6,12 @@ from campsite_finder_agent.models import Match
 from campsite_finder_agent.results import aggregate_match_windows, state_key_for_window
 
 
-def make_match(campsite_id: str, check_in: date, campground_url: str = "https://example.test/camp") -> Match:
+def make_match(
+    campsite_id: str,
+    check_in: date,
+    campground_url: str = "https://example.test/camp",
+    unlock_times: list[str] | None = None,
+) -> Match:
     return Match(
         search_name="camp-thu-sun",
         campground_id="ReserveCalifornia:123",
@@ -20,6 +25,7 @@ def make_match(campsite_id: str, check_in: date, campground_url: str = "https://
         site_type="",
         loop="",
         availability=["Available", "Available", "Available"],
+        unlock_times=unlock_times or [],
     )
 
 
@@ -65,3 +71,14 @@ def test_aggregate_match_windows_merges_consecutive_start_dates() -> None:
     assert windows[0].matching_start_count == 3
     assert windows[0].unique_site_count == 3
     assert windows[1].check_in_window_start == date(2026, 8, 10)
+
+
+def test_aggregate_match_windows_includes_unlock_times() -> None:
+    windows = aggregate_match_windows(
+        [
+            make_match("1", date(2026, 8, 6), unlock_times=["2026-08-05T08:00:00"]),
+            make_match("2", date(2026, 8, 6), unlock_times=["2026-08-05T08:00:00", "2026-08-05T08:15:00"]),
+        ]
+    )
+
+    assert windows[0].unlock_times == ["2026-08-05T08:00:00", "2026-08-05T08:15:00"]

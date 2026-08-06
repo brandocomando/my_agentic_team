@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     config_path: Path = Field(default=Path("./config/searches.yaml"), alias="CAMPSITE_CONFIG_PATH")
     output_path: Path = Field(default=Path("./data/matches.json"), alias="CAMPSITE_OUTPUT_PATH")
     csv_output_path: Path = Field(default=Path("./data/matches.csv"), alias="CAMPSITE_CSV_OUTPUT_PATH")
+    lock_output_path: Path = Field(default=Path("./data/locked-matches.json"), alias="CAMPSITE_LOCK_OUTPUT_PATH")
+    lock_csv_output_path: Path = Field(default=Path("./data/locked-matches.csv"), alias="CAMPSITE_LOCK_CSV_OUTPUT_PATH")
     cache_path: Path = Field(default=Path("./data/cache"), alias="CAMPSITE_CACHE_PATH")
     raw_data_path: Path = Field(default=Path("./data/raw"), alias="CAMPSITE_RAW_DATA_PATH")
     state_path: Path = Field(default=Path("./data/state.json"), alias="CAMPSITE_STATE_PATH")
@@ -41,6 +43,8 @@ def load_settings() -> Settings:
     settings = Settings()
     settings.output_path.parent.mkdir(parents=True, exist_ok=True)
     settings.csv_output_path.parent.mkdir(parents=True, exist_ok=True)
+    settings.lock_output_path.parent.mkdir(parents=True, exist_ok=True)
+    settings.lock_csv_output_path.parent.mkdir(parents=True, exist_ok=True)
     settings.cache_path.mkdir(parents=True, exist_ok=True)
     settings.gmail_token_path.parent.mkdir(parents=True, exist_ok=True)
     settings.notification_state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,5 +63,9 @@ def load_config(path: Path) -> AppConfig:
         config.searches = [
             search.model_copy(update={"filters": config.filters.merged_with(search.filters)})
             for search in config.searches
+        ]
+        config.locked_searches = [
+            search.model_copy(update={"filters": config.filters.merged_with(search.filters)})
+            for search in config.locked_searches
         ]
     return config

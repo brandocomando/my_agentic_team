@@ -32,6 +32,11 @@ tasks:
     cmds:
       - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --once {{.CLI_ARGS}}
 
+  locks:reservecalifornia:
+    desc: Report ReserveCalifornia grid lock icons for a URL/date range
+    cmds:
+      - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --reservecalifornia-locks {{.CLI_ARGS}}
+
   discover:
     desc: Discover Outdoorithm campground IDs for a state, e.g. `task discover -- CA`
     cmds:

@@ -137,10 +137,13 @@ def render_email_body(matches: list[MatchWindow]) -> str:
             [
                 f"{match.campground_name} - {score} {match.ai_fit}".rstrip(),
                 f"Dates: {match.check_in_window_start.isoformat()} to {match.latest_check_out.isoformat()} ({match.nights} nights)",
+                f"Campsite: {match.representative_campsite_name}",
                 f"Searches: {', '.join(match.search_names)}",
                 f"URL: {match.campground_url}",
             ]
         )
+        if match.unlock_times:
+            lines.append(f"Unlock times: {', '.join(match.unlock_times)}")
         if match.ai_summary:
             lines.append(f"Summary: {match.ai_summary}")
         if match.ai_reasons:

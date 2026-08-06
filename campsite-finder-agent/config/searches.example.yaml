@@ -77,3 +77,28 @@ searches:
     require_login: true
     alert:
       methods: [terminal, bell]
+
+locked_searches:
+  - name: doheny-south-loop-locked-fri-sun
+    campgrounds:
+      - name: Doheny SB South Loop
+        provider: reservecalifornia
+        url: https://www.reservecalifornia.com/park/639/464
+      - name: San Clemente SB
+        provider: reservecalifornia
+        url: https://www.reservecalifornia.com/park/706/432
+    availability:
+      start: 2026-08-07
+      end: 2026-08-10
+      nights: 2
+      check_in_weekdays: [Friday]
+    filters:
+      site_type_exclude: []
+    require_login: false
+    preferences:
+      likes: [beach access, South Loop]
+      dislikes: [short sites]
+      must_haves: [locked sites that open at 8am]
+      notes: Use this to prepare for booking when ReserveCalifornia releases the lock.
+    alert:
+      methods: [terminal, bell]

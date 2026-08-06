@@ -6,7 +6,7 @@ import re
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import AliasChoices, BaseModel, Field, HttpUrl, field_validator
 
 
 class Weekday(StrEnum):
@@ -155,11 +155,21 @@ class AIPreferences(BaseModel):
 class SearchConfig(BaseModel):
     name: str
     campground: CampgroundConfig
-    date_window: DateWindow
+    date_window: DateWindow = Field(validation_alias=AliasChoices("date_window", "availability"))
     filters: SiteFilters = Field(default_factory=SiteFilters)
     alert: AlertConfig = Field(default_factory=AlertConfig)
     preferences: AIPreferences = Field(default_factory=AIPreferences)
     require_login: bool = True
+
+
+class LockedSearchConfig(BaseModel):
+    name: str
+    campgrounds: list[CampgroundConfig]
+    date_window: DateWindow = Field(validation_alias=AliasChoices("date_window", "availability"))
+    filters: SiteFilters = Field(default_factory=SiteFilters)
+    alert: AlertConfig = Field(default_factory=AlertConfig)
+    preferences: AIPreferences = Field(default_factory=AIPreferences)
+    require_login: bool = False
 
 
 class SearchSetConfig(BaseModel):
@@ -176,6 +186,7 @@ class SearchSetConfig(BaseModel):
 class AppConfig(BaseModel):
     filters: SiteFilters = Field(default_factory=SiteFilters)
     searches: list[SearchConfig] = Field(default_factory=list)
+    locked_searches: list[LockedSearchConfig] = Field(default_factory=list)
     search_sets: list[SearchSetConfig] = Field(default_factory=list)
 
 
@@ -205,6 +216,7 @@ class Match(BaseModel):
     site_type: str = ""
     loop: str = ""
     availability: list[str]
+    unlock_times: list[str] = Field(default_factory=list)
 
 
 class MatchWindow(BaseModel):
@@ -223,6 +235,7 @@ class MatchWindow(BaseModel):
     representative_site_type: str = ""
     representative_loop: str = ""
     matching_campsite_ids: list[str] = Field(default_factory=list)
+    unlock_times: list[str] = Field(default_factory=list)
     ai_score: float | None = None
     ai_fit: str = ""
     ai_reasons: list[str] = Field(default_factory=list)

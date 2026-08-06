@@ -1,16 +1,38 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from datetime import timedelta
 import re
 from urllib.parse import urlparse
 
-from campsite_finder_agent.availability import candidate_check_ins, merge_campsites
+from campsite_finder_agent.availability import (
+    campground_id_for_search,
+    candidate_check_ins,
+    campsite_matches_filters,
+    merge_campsites,
+)
 from campsite_finder_agent.browser import require_playwright
-from campsite_finder_agent.models import Campsite, SearchConfig
+from campsite_finder_agent.models import Campsite, Match, SearchConfig
 
 
 RESERVE_CALIFORNIA_GRID_BATCH_DAYS = 21
+
+
+@dataclass(frozen=True)
+class ReserveCaliforniaLock:
+    campsite_id: str
+    campsite_name: str
+    short_name: str
+    date: date
+    lock_at: str
+    is_free: bool
+    is_blocked: bool
+    reservation_id: int
+    site_type: str = ""
+    max_vehicle_length: int | None = None
+    accessible: bool | None = None
+    raw: dict | None = None
 
 
 def fetch_campsites_for_search(
@@ -46,6 +68,40 @@ def fetch_campsites_for_search(
             campsites = fetch_visible_campsites_by_date(page, search, request_delay_seconds)
         browser.close()
     return campsites
+
+
+def fetch_locked_campsites(
+    cdp_url: str,
+    park_url: str,
+    start: date,
+    end: date,
+    site_names: set[str] | None = None,
+) -> list[ReserveCaliforniaLock]:
+    _, facility_id = reserve_california_ids_from_url(park_url)
+    if not facility_id:
+        raise RuntimeError(
+            f"Could not infer ReserveCalifornia facility id from {park_url}. "
+            "Expected a URL like https://www.reservecalifornia.com/park/707/662."
+        )
+    sync_playwright = require_playwright()
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.connect_over_cdp(cdp_url)
+        page = _find_reserve_california_page(browser)
+        locks_by_batch: list[ReserveCaliforniaLock] = []
+        for batch_start, batch_end in grid_date_batches(start, end):
+            payload = reserve_california_grid_payload(facility_id, batch_start, batch_end)
+            response = page.context.request.post(
+                "https://california-rdr.prod.cali.rd12.recreation-management.tylerapp.com/rdr/search/grid",
+                data=payload,
+                headers={"content-type": "application/json"},
+            )
+            if not response.ok:
+                raise RuntimeError(
+                    f"grid API returned {response.status} for {batch_start.isoformat()} to {batch_end.isoformat()}"
+                )
+            locks_by_batch.extend(parse_grid_locks(response.json(), site_names=site_names))
+        browser.close()
+    return locks_by_batch
 
 
 def reserve_california_ids_from_url(url: str) -> tuple[str | None, str | None]:
@@ -138,6 +194,101 @@ def parse_grid_campsites(payload: dict) -> list[Campsite]:
             )
         )
     return campsites
+
+
+def parse_grid_locks(payload: dict, site_names: set[str] | None = None) -> list[ReserveCaliforniaLock]:
+    wanted = {_normalize_site_name(site_name) for site_name in site_names or set()}
+    units = (payload.get("Facility") or {}).get("Units") or {}
+    locks: list[ReserveCaliforniaLock] = []
+    for key, unit in units.items():
+        if not isinstance(unit, dict):
+            continue
+        campsite_id = str(unit.get("UnitId") or key)
+        campsite_name = str(unit.get("Name") or unit.get("ShortName") or campsite_id)
+        short_name = str(unit.get("ShortName") or "")
+        aliases = {
+            _normalize_site_name(campsite_id),
+            _normalize_site_name(campsite_name),
+            _normalize_site_name(short_name),
+        }
+        if wanted and not aliases.intersection(wanted):
+            continue
+        for raw_day, raw_slice in (unit.get("Slices") or {}).items():
+            parsed_day = parse_grid_date(raw_day)
+            if not parsed_day or not isinstance(raw_slice, dict):
+                continue
+            lock_at = str(raw_slice.get("Lock") or "")
+            if not lock_at:
+                continue
+            locks.append(
+                ReserveCaliforniaLock(
+                    campsite_id=campsite_id,
+                    campsite_name=campsite_name,
+                    short_name=short_name,
+                    date=parsed_day,
+                    lock_at=lock_at,
+                    is_free=raw_slice.get("IsFree") is True,
+                    is_blocked=raw_slice.get("IsBlocked") is True,
+                    reservation_id=_parse_optional_int(raw_slice.get("ReservationId")) or 0,
+                    site_type=str(unit.get("UnitTypeId") or ""),
+                    max_vehicle_length=_parse_optional_int(unit.get("VehicleLength")),
+                    accessible=unit.get("IsAda") if isinstance(unit.get("IsAda"), bool) else None,
+                    raw={"provider": "reservecalifornia", "unit": unit, "slice": raw_slice},
+                )
+            )
+    return sorted(locks, key=lambda item: (item.campsite_name, item.date))
+
+
+def find_locked_matches(search: SearchConfig, locks: list[ReserveCaliforniaLock]) -> list[Match]:
+    locks_by_site: dict[str, list[ReserveCaliforniaLock]] = {}
+    for lock in locks:
+        locks_by_site.setdefault(lock.campsite_id, []).append(lock)
+    matches: list[Match] = []
+    for site_locks in locks_by_site.values():
+        first_lock = site_locks[0]
+        campsite = Campsite(
+            campsite_id=first_lock.campsite_id,
+            name=first_lock.campsite_name,
+            site_type=first_lock.site_type,
+            max_vehicle_length=first_lock.max_vehicle_length,
+            accessible=first_lock.accessible,
+        )
+        if not campsite_matches_filters(campsite, search):
+            continue
+        locks_by_date = {lock.date: lock for lock in site_locks}
+        for check_in in candidate_check_ins(search):
+            check_out = check_in + timedelta(days=search.date_window.nights)
+            stay_dates = [
+                check_in + timedelta(days=offset)
+                for offset in range(search.date_window.nights + 1)
+            ]
+            stay_locks = [locks_by_date.get(day) for day in stay_dates]
+            if all(stay_locks):
+                matches.append(
+                    Match(
+                        search_name=search.name,
+                        campground_id=campground_id_for_search(search),
+                        campground_name=search.campground.name,
+                        campground_url=str(search.campground.url),
+                        campsite_id=first_lock.campsite_id,
+                        campsite_name=first_lock.campsite_name,
+                        check_in=check_in,
+                        check_out=check_out,
+                        nights=search.date_window.nights,
+                        site_type=first_lock.site_type,
+                        availability=[f"Locked until {lock.lock_at}" for lock in stay_locks if lock],
+                        unlock_times=sorted({lock.lock_at for lock in stay_locks if lock}),
+                    )
+                )
+    return matches
+
+
+def _normalize_site_name(value: str) -> str:
+    normalized = value.strip().lower()
+    normalized = re.sub(r"^campsite\s*#?\s*", "", normalized)
+    normalized = re.sub(r"^site\s*#?\s*", "", normalized)
+    normalized = normalized.lstrip("#")
+    return normalized
 
 
 def parse_grid_date(value: str) -> date | None:

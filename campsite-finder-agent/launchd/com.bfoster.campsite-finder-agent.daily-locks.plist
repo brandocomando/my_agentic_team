@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bfoster.campsite-finder-agent.daily-locks</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/personal/my_agentic_team/campsite-finder-agent/scripts/daily_lock_scan.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>7</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>/opt/personal/my_agentic_team/campsite-finder-agent</string>
+
+  <key>StandardOutPath</key>
+  <string>/opt/personal/my_agentic_team/campsite-finder-agent/data/logs/daily-lock-launchd.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/opt/personal/my_agentic_team/campsite-finder-agent/data/logs/daily-lock-launchd.err.log</string>
+</dict>
+</plist>

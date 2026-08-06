@@ -227,6 +227,7 @@ def match_payload(match: MatchWindow) -> dict[str, Any]:
         "campground_id": match.campground_id,
         "campground_name": match.campground_name,
         "campground_url": match.campground_url,
+        "check_in_date": match.check_in_window_start.isoformat(),
         "check_in_window_start": match.check_in_window_start.isoformat(),
         "check_in_window_end": match.check_in_window_end.isoformat(),
         "earliest_check_out": match.earliest_check_out.isoformat(),
@@ -235,6 +236,7 @@ def match_payload(match: MatchWindow) -> dict[str, Any]:
         "representative_campsite_name": match.representative_campsite_name,
         "representative_site_type": match.representative_site_type,
         "representative_loop": match.representative_loop,
+        "unlock_times": match.unlock_times,
         "matching_start_count": match.matching_start_count,
         "unique_site_count": match.unique_site_count,
     }
@@ -249,6 +251,13 @@ def render_ai_summary(response: AIAnalysisResponse, matches: list[MatchWindow]) 
             continue
         score = "n/a" if analysis.score is None else f"{analysis.score:g}/10"
         lines.append(f"- {match.campground_name}: {score} {analysis.fit}".rstrip())
+        lines.append(f"  URL: {match.campground_url}")
+        lines.append(
+            f"  Check-in: {match.check_in_window_start.isoformat()} | "
+            f"Nights: {match.nights} | Campsite: {match.representative_campsite_name}"
+        )
+        if match.unlock_times:
+            lines.append(f"  Unlock times: {', '.join(match.unlock_times)}")
         if analysis.summary:
             lines.append(f"  {analysis.summary}")
         if analysis.suggested_state_action:

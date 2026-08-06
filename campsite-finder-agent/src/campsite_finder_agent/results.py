@@ -18,6 +18,7 @@ class StartDateMatch:
     representative: Match
     search_names: set[str] = field(default_factory=set)
     site_ids: set[str] = field(default_factory=set)
+    unlock_times: set[str] = field(default_factory=set)
 
 
 def aggregate_match_windows(matches: list[Match]) -> list[MatchWindow]:
@@ -56,6 +57,7 @@ def one_match_per_campground_start(matches: list[Match]) -> list[StartDateMatch]
             by_start[key] = existing
         existing.search_names.add(match.search_name)
         existing.site_ids.add(match.campsite_id)
+        existing.unlock_times.update(match.unlock_times)
     return list(by_start.values())
 
 
@@ -65,6 +67,7 @@ def build_window(starts: list[StartDateMatch]) -> MatchWindow:
     representative = first.representative
     search_names = sorted({name for item in starts for name in item.search_names})
     site_ids = {site_id for item in starts for site_id in item.site_ids}
+    unlock_times = {unlock_time for item in starts for unlock_time in item.unlock_times}
     return MatchWindow(
         state_key=state_key_for_window(
             first.campground_url,
@@ -86,6 +89,7 @@ def build_window(starts: list[StartDateMatch]) -> MatchWindow:
         representative_site_type=representative.site_type,
         representative_loop=representative.loop,
         matching_campsite_ids=sorted(site_ids),
+        unlock_times=sorted(unlock_times),
         matching_start_count=len(starts),
         unique_site_count=len(site_ids),
     )
