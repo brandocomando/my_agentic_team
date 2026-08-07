@@ -203,6 +203,58 @@ Tune those values with:
 task scan -- --request-delay-seconds 5 --search-delay-seconds 15 --max-retries 5
 ```
 
+For a timed Recreation.gov release-window watch, open Chrome with CDP, sign in if needed, and run the same `get_site` task with a Recreation.gov campground URL:
+
+```bash
+task get_site -- SITE=118 START_DATE=3/20/27 NIGHTS=2 CAMPGROUND_URL=https://www.recreation.gov/camping/campgrounds/232250
+```
+
+This sets the campground date picker to the requested check-in/check-out before waiting, polls Recreation.gov's month availability endpoint through the attached browser session, refreshes the availability table between polls, and watches the target site for every night in the requested stay. It treats statuses such as `NYR` / `Not Released` as not yet bookable. When all requested nights become available, it opens the campsite detail page, clicks `Add to Cart`, fills order details, accepts the important-information checkbox, clicks `Proceed to Cart`, clicks `Proceed to Payment`, then tries to click `Next` on the payment page if that button is enabled. It never clicks `Confirm`; you take over there. By default it polls once per second from 6:59:30 AM to 7:01:00 AM America/Los_Angeles. Override the window with:
+
+```bash
+task get_site -- SITE=118 START_DATE=3/20/27 NIGHTS=2 CAMPGROUND_URL=https://www.recreation.gov/camping/campgrounds/232250 REFRESH_WINDOW_START=06:59:00 REFRESH_WINDOW_END=07:02:00
+```
+
+To practice against the current API state without waiting for the release window, use:
+
+```bash
+task practice_site -- SITE=118 START_DATE=3/20/27 NIGHTS=2 CAMPGROUND_URL=https://www.recreation.gov/camping/campgrounds/232250
+```
+
+Required Recreation.gov get-site values are `SITE`, `START_DATE`, `NIGHTS`, and `CAMPGROUND_URL`, using the same task/env names as ReserveCalifornia. Set them on the task command or persist them in `.env`:
+
+```env
+CAMPSITE_GET_SITE_SITE=118
+CAMPSITE_GET_SITE_START_DATE=3/20/27
+CAMPSITE_GET_SITE_NIGHTS=2
+CAMPSITE_GET_SITE_CAMPGROUND_URL=https://www.recreation.gov/camping/campgrounds/232250
+CAMPSITE_GET_SITE_REFRESH_WINDOW_START=06:59:30
+CAMPSITE_GET_SITE_REFRESH_WINDOW_END=07:01:00
+CAMPSITE_GET_SITE_REFRESH_INTERVAL_SECONDS=1.0
+```
+
+Recreation.gov order details use the same generic get-site personal defaults:
+
+```env
+CAMPSITE_GET_SITE_ADULTS=2
+CAMPSITE_GET_SITE_CHILDREN=2
+CAMPSITE_GET_SITE_PHONE_NUMBER=5551234567
+CAMPSITE_GET_SITE_POSTAL_CODE=95814
+CAMPSITE_GET_SITE_CAMPING_UNIT=Trailer
+CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET=18
+CAMPSITE_GET_SITE_VEHICLE_COUNT=1
+```
+
+With those `.env` values set, this is enough:
+
+```bash
+task practice_site
+```
+
+`task get_recreation_site` and `task practice_recreation_site` are also available as explicit Recreation.gov aliases, but `get_site` / `practice_site` infer the provider from `CAMPGROUND_URL`.
+
+For Recreation.gov detection without clicking `Add to Cart`, add `NO_CLICK_BOOK_NOW=1`. To click `Add to Cart` and fill order details but stop before `Proceed to Cart`, add `NO_CLICK_RESERVE_UNIT=1`. To proceed to the payment page but stop before clicking payment `Next`, add `NO_CLICK_PAYMENT_NEXT=1`.
+
 When visible matches are found, the scan tries to score and summarize them with Ollama. Configure Ollama with:
 
 ```env
