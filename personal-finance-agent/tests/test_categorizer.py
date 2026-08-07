@@ -177,6 +177,69 @@ def test_apply_source_category_maps_personal_care(tmp_path) -> None:
     assert result.needs_review is False
 
 
+def test_negative_source_income_is_rejected_for_review(tmp_path) -> None:
+    conn = connect(tmp_path / "finance.sqlite")
+    insert_transactions(
+        conn,
+        [
+            ImportedTransaction(
+                source_file="test.csv",
+                source_account="checking",
+                transaction_date=date(2026, 6, 6),
+                raw_description="Withdrawal 07/20",
+                normalized_merchant="Withdrawal",
+                source_category="Income",
+                amount=-4000.00,
+            )
+        ],
+    )
+    tx = transactions_for_month(conn, "2026-06")[0]
+
+    result = apply_source_category(tx)
+
+    assert result is not None
+    assert result.category == "Needs Review"
+    assert result.needs_review is True
+    assert "negative" in result.reason
+
+
+def test_negative_llm_income_is_rejected_for_review(tmp_path, monkeypatch) -> None:
+    conn = connect(tmp_path / "finance.sqlite")
+    insert_transactions(
+        conn,
+        [
+            ImportedTransaction(
+                source_file="test.csv",
+                source_account="checking",
+                transaction_date=date(2026, 6, 6),
+                raw_description="Withdrawal 07/20",
+                normalized_merchant="Withdrawal",
+                source_category="Other Expenses",
+                amount=-4000.00,
+            )
+        ],
+    )
+    tx = transactions_for_month(conn, "2026-06")[0]
+
+    monkeypatch.setattr(
+        "personal_finance_agent.categorizer.call_ollama",
+        lambda prompt, model, base_url: {
+            "category": "Income",
+            "confidence": 0.92,
+            "reason": "Incorrectly guessed income.",
+            "needs_review": False,
+            "exclude_from_spending": True,
+        },
+    )
+
+    result = categorize_transaction(conn, tx, [], use_llm=True)
+
+    assert result.category == "Needs Review"
+    assert result.needs_review is True
+    assert result.exclude_from_spending is False
+    assert result.source == "llm"
+
+
 def test_llm_can_use_web_search_for_unknown_merchant(tmp_path, monkeypatch) -> None:
     conn = connect(tmp_path / "finance.sqlite")
     insert_transactions(
