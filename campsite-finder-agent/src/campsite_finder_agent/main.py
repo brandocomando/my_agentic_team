@@ -537,7 +537,7 @@ def run_configured_reserve_california_lock_scan(
     last_network_domain: str | None = None
     for group in interleave_search_groups_by_domain(group_searches_by_campground(searches)):
         search_domain = domain_for_url(group.campground_url)
-        if not search_domain.endswith("reservecalifornia.com"):
+        if search_domain != "reservecalifornia.com" and not search_domain.endswith(".reservecalifornia.com"):
             console.print(f"[yellow]Skipping non-ReserveCalifornia lock search:[/yellow] {group.campground_name}")
             continue
         maybe_wait_between_network_searches(console, search_delay_seconds, last_network_domain, search_domain)
