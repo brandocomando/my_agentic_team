@@ -20,6 +20,7 @@ from campsite_finder_agent.config import load_config, load_settings
 from campsite_finder_agent.models import AppConfig, DateWindow, LockedSearchConfig, Match, MatchWindow, SearchConfig
 from campsite_finder_agent.outdoorithm import discover_campground_catalog_for_state, discover_searches_for_search_set
 from campsite_finder_agent.providers import fetch_campsites_for_search
+from campsite_finder_agent.recreation import get_recreation_site
 from campsite_finder_agent.reserve_california import (
     ReserveCaliforniaLock,
     capture_reserve_california_network,
@@ -64,47 +65,55 @@ def main() -> None:
     )
     parser.add_argument(
         "--park-url",
-        default=settings.get_site_campground_url or None,
         help="ReserveCalifornia park URL, e.g. https://www.reservecalifornia.com/park/639/464.",
     )
     parser.add_argument(
         "--start-date",
-        default=settings.get_site_start_date or None,
         help="First date to inspect, e.g. 2026-08-07.",
     )
     parser.add_argument("--end-date", help="Last date to inspect, e.g. 2026-08-09.")
     parser.add_argument(
         "--nights",
         type=int,
-        default=settings.get_site_nights,
         help="Expected ReserveCalifornia stay length in nights.",
     )
     parser.add_argument(
         "--site",
         action="append",
-        default=[settings.get_site_site] if settings.get_site_site else [],
+        default=[],
         help="Limit lock scan to a site number/name. Repeatable.",
     )
     parser.add_argument("--locks-output", type=Path, help="Optional JSON or CSV output path for one-off ReserveCalifornia locks.")
+    parser.add_argument(
+        "--get-site",
+        action="store_true",
+        help="Run the provider-specific get-site helper inferred from --park-url.",
+    )
     parser.add_argument(
         "--get-reservecalifornia-site",
         action="store_true",
         help="Refresh a ReserveCalifornia grid and click a target site cell when it opens.",
     )
     parser.add_argument(
+        "--get-recreation-site",
+        action="store_true",
+        help="Poll Recreation.gov release status for a target site and stay.",
+    )
+    parser.add_argument(
         "--refresh-window-start",
-        default=settings.get_site_refresh_window_start,
         help="Local refresh start time, HH:MM[:SS].",
     )
-    parser.add_argument("--refresh-window-end", default=settings.get_site_refresh_window_end, help="Local refresh end time, HH:MM[:SS].")
-    parser.add_argument("--refresh-timezone", default=settings.get_site_refresh_timezone)
-    parser.add_argument("--refresh-interval-seconds", type=float, default=settings.get_site_refresh_interval_seconds)
-    parser.add_argument("--max-run-seconds", type=float, default=settings.get_site_max_run_seconds, help="Cap a get-site run after this many seconds.")
+    parser.add_argument("--refresh-window-end", help="Local refresh end time, HH:MM[:SS].")
+    parser.add_argument("--refresh-timezone")
+    parser.add_argument("--refresh-interval-seconds", type=float)
+    parser.add_argument("--max-run-seconds", type=float, help="Cap a get-site run after this many seconds.")
     parser.add_argument("--adults", type=int, default=settings.get_site_adults)
     parser.add_argument("--children", type=int, default=settings.get_site_children)
     parser.add_argument("--occupant-name", default=settings.get_site_occupant or settings.get_site_occupant_name)
     parser.add_argument("--camping-unit", default=settings.get_site_camping_unit)
     parser.add_argument("--trailer-length-feet", type=float, default=settings.get_site_trailer_length_feet)
+    parser.add_argument("--vehicle-count", type=int, default=settings.get_site_vehicle_count)
+    parser.add_argument("--phone-number", default=settings.get_site_phone_number)
     parser.add_argument("--street-1", default=settings.get_site_street_1)
     parser.add_argument("--city", default=settings.get_site_city)
     parser.add_argument("--state", default=settings.get_site_state)
@@ -113,24 +122,127 @@ def main() -> None:
     parser.add_argument("--no-click-book-now", action="store_true", help="Click only the site cell; do not click Book Now.")
     parser.add_argument("--no-click-reserve-unit", action="store_true", help="Fill reservation details but do not click Reserve Unit.")
     parser.add_argument(
+        "--no-click-payment-next",
+        action="store_true",
+        help="For Recreation.gov, stop on the payment page instead of clicking Next.",
+    )
+    parser.add_argument(
         "--debug-reservecalifornia-network",
         action="store_true",
         help="Reload the open ReserveCalifornia tab and print captured JSON/API responses.",
     )
     args = parser.parse_args()
 
+    if args.get_site:
+        park_url = args.park_url or settings.get_site_campground_url
+        if not park_url:
+            raise RuntimeError("--park-url is required with --get-site.")
+        if is_recreation_url(park_url):
+            result = run_recreation_get_site(
+                args.cdp_url,
+                park_url,
+                args.site or ([settings.get_site_site] if settings.get_site_site else []),
+                args.start_date or settings.get_site_start_date,
+                args.refresh_window_start or settings.get_site_refresh_window_start,
+                args.refresh_window_end or settings.get_site_refresh_window_end,
+                args.refresh_timezone or settings.get_site_refresh_timezone,
+                args.refresh_interval_seconds
+                if args.refresh_interval_seconds is not None
+                else settings.get_site_refresh_interval_seconds,
+                args.max_run_seconds if args.max_run_seconds is not None else settings.get_site_max_run_seconds,
+                args.nights if args.nights is not None else settings.get_site_nights,
+                not args.no_click_book_now,
+                args.adults,
+                args.children,
+                args.camping_unit,
+                args.trailer_length_feet,
+                args.vehicle_count,
+                args.phone_number,
+                args.postal_code or args.zipcode,
+                not args.no_click_reserve_unit,
+                not args.no_click_payment_next,
+            )
+            Console().print(
+                f"Recreation.gov get-site finished: {result.action} after {result.attempts} attempt(s); "
+                f"site: {result.campsite_name or result.campsite_id or 'n/a'}; "
+                f"Add to Cart clicked: {result.add_to_cart_clicked}."
+            )
+            return
+        if is_reserve_california_url(park_url):
+            result = run_reserve_california_get_site(
+                args.cdp_url,
+                park_url,
+                args.site or ([settings.get_site_site] if settings.get_site_site else []),
+                args.start_date or settings.get_site_start_date,
+                args.refresh_window_start or settings.get_site_refresh_window_start,
+                args.refresh_window_end or settings.get_site_refresh_window_end,
+                args.refresh_timezone or settings.get_site_refresh_timezone,
+                args.refresh_interval_seconds if args.refresh_interval_seconds is not None else settings.get_site_refresh_interval_seconds,
+                args.max_run_seconds if args.max_run_seconds is not None else settings.get_site_max_run_seconds,
+                args.nights if args.nights is not None else settings.get_site_nights,
+                args.adults,
+                args.children,
+                args.occupant_name,
+                args.camping_unit,
+                args.trailer_length_feet,
+                args.street_1,
+                args.city,
+                args.state,
+                args.postal_code or args.zipcode,
+                not args.no_click_book_now,
+                not args.no_click_reserve_unit,
+            )
+            Console().print(
+                f"ReserveCalifornia get-site finished: {result.action} "
+                f"after {result.attempts} attempt(s); Book Now clicked: {result.book_now_clicked}; "
+                f"Reserve Unit clicked: {result.reserve_unit_clicked}."
+            )
+            return
+        raise RuntimeError("--get-site only supports recreation.gov and reservecalifornia.com campground URLs.")
+
+    if args.get_recreation_site:
+        result = run_recreation_get_site(
+            args.cdp_url,
+            args.park_url or settings.get_site_campground_url or None,
+            args.site or ([settings.get_site_site] if settings.get_site_site else []),
+            args.start_date or settings.get_site_start_date,
+            args.refresh_window_start or settings.get_site_refresh_window_start,
+            args.refresh_window_end or settings.get_site_refresh_window_end,
+            args.refresh_timezone or settings.get_site_refresh_timezone,
+            args.refresh_interval_seconds
+            if args.refresh_interval_seconds is not None
+            else settings.get_site_refresh_interval_seconds,
+            args.max_run_seconds if args.max_run_seconds is not None else settings.get_site_max_run_seconds,
+            args.nights if args.nights is not None else settings.get_site_nights,
+            not args.no_click_book_now,
+            args.adults,
+            args.children,
+            args.camping_unit,
+            args.trailer_length_feet,
+            args.vehicle_count,
+            args.phone_number,
+            args.postal_code or args.zipcode,
+            not args.no_click_reserve_unit,
+            not args.no_click_payment_next,
+        )
+        Console().print(
+            f"Recreation.gov get-site finished: {result.action} after {result.attempts} attempt(s); "
+            f"site: {result.campsite_name or result.campsite_id or 'n/a'}; "
+            f"Add to Cart clicked: {result.add_to_cart_clicked}."
+        )
+        return
     if args.get_reservecalifornia_site:
         result = run_reserve_california_get_site(
             args.cdp_url,
-            args.park_url,
-            args.site,
-            args.start_date,
-            args.refresh_window_start,
-            args.refresh_window_end,
-            args.refresh_timezone,
-            args.refresh_interval_seconds,
-            args.max_run_seconds,
-            args.nights,
+            args.park_url or settings.get_site_campground_url or None,
+            args.site or ([settings.get_site_site] if settings.get_site_site else []),
+            args.start_date or settings.get_site_start_date,
+            args.refresh_window_start or settings.get_site_refresh_window_start,
+            args.refresh_window_end or settings.get_site_refresh_window_end,
+            args.refresh_timezone or settings.get_site_refresh_timezone,
+            args.refresh_interval_seconds if args.refresh_interval_seconds is not None else settings.get_site_refresh_interval_seconds,
+            args.max_run_seconds if args.max_run_seconds is not None else settings.get_site_max_run_seconds,
+            args.nights if args.nights is not None else settings.get_site_nights,
             args.adults,
             args.children,
             args.occupant_name,
@@ -475,6 +587,70 @@ def run_reserve_california_get_site(
         postal_code=postal_code,
         click_reserve_unit=click_reserve_unit,
     )
+
+
+def run_recreation_get_site(
+    cdp_url: str,
+    campground_url: str | None,
+    sites: list[str],
+    start_date: str | None,
+    refresh_window_start: str,
+    refresh_window_end: str,
+    refresh_timezone: str,
+    refresh_interval_seconds: float,
+    max_run_seconds: float | None,
+    nights: int | None,
+    click_add_to_cart: bool,
+    adults: int,
+    children: int,
+    camping_unit: str,
+    trailer_length_feet: float | None,
+    vehicle_count: int | None,
+    phone_number: str,
+    postal_code: str,
+    click_proceed_to_cart: bool,
+    click_payment_next: bool,
+):
+    if not campground_url:
+        raise RuntimeError("--park-url is required with --get-recreation-site.")
+    if not sites:
+        raise RuntimeError("--site is required with --get-recreation-site.")
+    if not start_date:
+        raise RuntimeError("--start-date is required with --get-recreation-site.")
+    if nights is None:
+        raise RuntimeError("--nights is required with --get-recreation-site.")
+    return get_recreation_site(
+        cdp_url=cdp_url,
+        campground_url=campground_url,
+        site=sites[0],
+        start_date=parse_cli_date(start_date),
+        nights=nights,
+        refresh_window_start=refresh_window_start,
+        refresh_window_end=refresh_window_end,
+        timezone_name=refresh_timezone,
+        refresh_interval_seconds=refresh_interval_seconds,
+        max_run_seconds=max_run_seconds,
+        click_add_to_cart=click_add_to_cart,
+        adults=adults,
+        children=children,
+        camping_unit=camping_unit,
+        trailer_length_feet=trailer_length_feet,
+        vehicle_count=vehicle_count,
+        phone_number=phone_number,
+        postal_code=postal_code,
+        click_proceed_to_cart=click_proceed_to_cart,
+        click_payment_next=click_payment_next,
+    )
+
+
+def is_recreation_url(value: str) -> bool:
+    host = urlparse(value).hostname or ""
+    return host == "recreation.gov" or host.endswith(".recreation.gov")
+
+
+def is_reserve_california_url(value: str) -> bool:
+    host = urlparse(value).hostname or ""
+    return host == "reservecalifornia.com" or host.endswith(".reservecalifornia.com")
 
 
 def parse_cli_date(value: str) -> date:

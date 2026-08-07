@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     get_site_children: int = Field(default=2, alias="CAMPSITE_GET_SITE_CHILDREN")
     get_site_camping_unit: str = Field(default="Trailer", alias="CAMPSITE_GET_SITE_CAMPING_UNIT")
     get_site_trailer_length_feet: float | None = Field(default=None, alias="CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET")
+    get_site_vehicle_count: int | None = Field(default=None, alias="CAMPSITE_GET_SITE_VEHICLE_COUNT")
+    get_site_phone_number: str = Field(default="", alias="CAMPSITE_GET_SITE_PHONE_NUMBER")
     get_site_street_1: str = Field(default="", alias="CAMPSITE_GET_SITE_STREET_1")
     get_site_city: str = Field(default="", alias="CAMPSITE_GET_SITE_CITY")
     get_site_state: str = Field(default="", alias="CAMPSITE_GET_SITE_STATE")
