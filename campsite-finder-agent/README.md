@@ -274,6 +274,58 @@ task locks:reservecalifornia -- --park-url https://www.reservecalifornia.com/par
 
 Use `--locks-output data/reservecalifornia-locks.json` or a `.csv` path to write one-off raw lock slices to a file.
 
+For a timed ReserveCalifornia booking assist, open Chrome with CDP, sign in, and run:
+
+```bash
+task get_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666 OCCUPANT="Your Name"
+```
+
+By default this refreshes once per second from 7:59:30 AM to 8:01:00 AM America/Los_Angeles, clicks the matching site cell for `START_DATE` if it becomes selectable, clicks the enabled `Book Now` button, acknowledges an `OK` alert popup if one appears, validates that the reservation details page shows the requested arrival date and `NIGHTS`, fills pre-cart details, accepts terms, clicks `Reserve Unit`, then clicks `Go To Checkout` if it appears. If checkout address fields are configured, it fills those too. It does not complete payment or enter card details. Override the window with:
+
+```bash
+task get_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666 OCCUPANT="Your Name" REFRESH_WINDOW_START=07:59:00 REFRESH_WINDOW_END=08:02:00
+```
+
+To practice on a site that is already open, use the immediate bounded runner:
+
+```bash
+task practice_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666 OCCUPANT="Your Name"
+```
+
+Practice mode polls every 0.2 seconds for up to 20 seconds by default. Override with `REFRESH_INTERVAL_SECONDS=0.1` or `MAX_RUN_SECONDS=60`.
+
+Required booking-assist values are `SITE`, `START_DATE`, `NIGHTS`, `CAMPGROUND_URL`, and `OCCUPANT`. Set them on the task command or persist them in `.env`:
+
+```env
+CAMPSITE_GET_SITE_SITE="Campsite #G048"
+CAMPSITE_GET_SITE_START_DATE=8/21/26
+CAMPSITE_GET_SITE_NIGHTS=2
+CAMPSITE_GET_SITE_CAMPGROUND_URL=https://www.reservecalifornia.com/park/7/365
+CAMPSITE_GET_SITE_OCCUPANT="Your Name"
+CAMPSITE_GET_SITE_ADULTS=2
+CAMPSITE_GET_SITE_CHILDREN=2
+CAMPSITE_GET_SITE_CAMPING_UNIT=Trailer
+CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET=18
+CAMPSITE_GET_SITE_STREET_1="123 Main St"
+CAMPSITE_GET_SITE_CITY=Sacramento
+CAMPSITE_GET_SITE_STATE=CA
+CAMPSITE_GET_SITE_POSTAL_CODE=95814
+```
+
+Task command values override `.env` values. With those `.env` values set, this is enough:
+
+```bash
+task practice_site -- NO_CLICK_RESERVE_UNIT=1
+```
+
+`OCCUPANT` is the task variable name. In `.env`, use `CAMPSITE_GET_SITE_OCCUPANT`; `CAMPSITE_GET_SITE_OCCUPANT_NAME` is also accepted for compatibility.
+
+Vehicle length is set to the smallest non-`No Vehicle` option that fits `TRAILER_LENGTH` or `CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET`. For example, an 18-foot trailer chooses `< 24` when that option is available. If no option fits, the command fails before clicking `Reserve Unit`. If no trailer length is configured, it falls back to the smallest non-`No Vehicle` option.
+
+Checkout address details can be set with `STREET_1`, `CITY`, `STATE`, and `POSTAL_CODE` task variables or with their `CAMPSITE_GET_SITE_*` `.env` equivalents. `ZIPCODE` and `CAMPSITE_GET_SITE_ZIPCODE` are accepted aliases for `POSTAL_CODE`. If any checkout address value is provided, all four are required. The helper fills address fields on the checkout screen only after `Reserve Unit` and `Go To Checkout`; it still stops before card payment.
+
+For a date-picker-only or grid-selection-only rehearsal, add `NO_CLICK_BOOK_NOW=1`.
+
 Recreation.gov searches also use direct availability API requests through the attached browser session. The agent opens campground pages only when login is required or a fallback fetch is needed.
 
 Outdoorithm can be used as an optional provider when you have an API key:
