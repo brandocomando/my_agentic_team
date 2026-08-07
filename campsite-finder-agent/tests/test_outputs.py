@@ -24,6 +24,7 @@ def make_match_window() -> MatchWindow:
         representative_site_type="4303",
         representative_loop="",
         matching_campsite_ids=["44624", "44625"],
+        unlock_times=["2026-12-02T08:00:00"],
         ai_score=8.5,
         ai_fit="strong",
         ai_reasons=["beach", "rv"],
@@ -47,6 +48,8 @@ def test_write_matches_csv_includes_campground_link(tmp_path) -> None:
     assert "ReserveCalifornia:707" in csv_text
     assert "matching_campsite_ids" in csv_text
     assert "44624; 44625" in csv_text
+    assert "unlock_times" in csv_text
+    assert "2026-12-02T08:00:00" in csv_text
     assert "campground_url" in csv_text
     assert "https://www.reservecalifornia.com/park/707/662" in csv_text
     assert "ai_score" in csv_text

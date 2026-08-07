@@ -32,6 +32,118 @@ tasks:
     cmds:
       - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --once {{.CLI_ARGS}}
 
+  locks:reservecalifornia:
+    desc: Report ReserveCalifornia grid lock icons for a URL/date range
+    cmds:
+      - uv run --extra browser python app.py --cdp-url {{.CDP_URL}} --reservecalifornia-locks {{.CLI_ARGS}}
+
+  get_site:
+    desc: Refresh ReserveCalifornia and complete pre-cart details, e.g. `task get_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666`
+    cmds:
+      - |
+        set -a
+        [ -f .env ] && . ./.env
+        set +a
+        for arg in {{.CLI_ARGS}}; do
+          case "$arg" in
+            *=*) export "$arg" ;;
+          esac
+        done
+        SITE="${SITE:-${CAMPSITE_GET_SITE_SITE:-}}"
+        START_DATE="${START_DATE:-${CAMPSITE_GET_SITE_START_DATE:-}}"
+        NIGHTS="${NIGHTS:-${CAMPSITE_GET_SITE_NIGHTS:-}}"
+        CAMPGROUND_URL="${CAMPGROUND_URL:-${CAMPSITE_GET_SITE_CAMPGROUND_URL:-}}"
+        OCCUPANT="${OCCUPANT:-${OCCUPANT_NAME:-}}"
+        OCCUPANT="${OCCUPANT:-${CAMPSITE_GET_SITE_OCCUPANT:-}}"
+        OCCUPANT="${OCCUPANT:-${CAMPSITE_GET_SITE_OCCUPANT_NAME:-}}"
+        TRAILER_LENGTH="${TRAILER_LENGTH:-${CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET:-}}"
+        STREET_1="${STREET_1:-${CAMPSITE_GET_SITE_STREET_1:-}}"
+        CITY="${CITY:-${CAMPSITE_GET_SITE_CITY:-}}"
+        STATE="${STATE:-${CAMPSITE_GET_SITE_STATE:-}}"
+        POSTAL_CODE="${POSTAL_CODE:-${ZIPCODE:-}}"
+        POSTAL_CODE="${POSTAL_CODE:-${CAMPSITE_GET_SITE_POSTAL_CODE:-}}"
+        POSTAL_CODE="${POSTAL_CODE:-${CAMPSITE_GET_SITE_ZIPCODE:-}}"
+        : "${SITE:?SITE is required, e.g. SITE=131}"
+        : "${START_DATE:?START_DATE is required, e.g. START_DATE=8/21/26}"
+        : "${NIGHTS:?NIGHTS is required, e.g. NIGHTS=2}"
+        : "${CAMPGROUND_URL:?CAMPGROUND_URL is required}"
+        : "${OCCUPANT:?OCCUPANT is required, e.g. OCCUPANT='Brandon Foster'}"
+        uv run --extra browser python app.py \
+          --cdp-url "{{.CDP_URL}}" \
+          --get-reservecalifornia-site \
+          --park-url "$CAMPGROUND_URL" \
+          --site "$SITE" \
+          --start-date "$START_DATE" \
+          --nights "$NIGHTS" \
+          --adults "${ADULTS:-${CAMPSITE_GET_SITE_ADULTS:-2}}" \
+          --children "${CHILDREN:-${CAMPSITE_GET_SITE_CHILDREN:-2}}" \
+          --occupant-name "$OCCUPANT" \
+          --camping-unit "${CAMPING_UNIT:-${CAMPSITE_GET_SITE_CAMPING_UNIT:-Trailer}}" \
+          ${TRAILER_LENGTH:+--trailer-length-feet "$TRAILER_LENGTH"} \
+          --street-1 "$STREET_1" \
+          --city "$CITY" \
+          --state "$STATE" \
+          --postal-code "$POSTAL_CODE" \
+          --refresh-window-start "${REFRESH_WINDOW_START:-${CAMPSITE_GET_SITE_REFRESH_WINDOW_START:-07:59:30}}" \
+          --refresh-window-end "${REFRESH_WINDOW_END:-${CAMPSITE_GET_SITE_REFRESH_WINDOW_END:-08:01:00}}" \
+          --refresh-interval-seconds "${REFRESH_INTERVAL_SECONDS:-${CAMPSITE_GET_SITE_REFRESH_INTERVAL_SECONDS:-1}}" \
+          ${NO_CLICK_BOOK_NOW:+--no-click-book-now} \
+          ${NO_CLICK_RESERVE_UNIT:+--no-click-reserve-unit}
+
+  practice_site:
+    desc: Immediately practice selecting an available ReserveCalifornia site and clicking Book Now
+    cmds:
+      - |
+        set -a
+        [ -f .env ] && . ./.env
+        set +a
+        for arg in {{.CLI_ARGS}}; do
+          case "$arg" in
+            *=*) export "$arg" ;;
+          esac
+        done
+        SITE="${SITE:-${CAMPSITE_GET_SITE_SITE:-}}"
+        START_DATE="${START_DATE:-${CAMPSITE_GET_SITE_START_DATE:-}}"
+        NIGHTS="${NIGHTS:-${CAMPSITE_GET_SITE_NIGHTS:-}}"
+        CAMPGROUND_URL="${CAMPGROUND_URL:-${CAMPSITE_GET_SITE_CAMPGROUND_URL:-}}"
+        OCCUPANT="${OCCUPANT:-${OCCUPANT_NAME:-}}"
+        OCCUPANT="${OCCUPANT:-${CAMPSITE_GET_SITE_OCCUPANT:-}}"
+        OCCUPANT="${OCCUPANT:-${CAMPSITE_GET_SITE_OCCUPANT_NAME:-}}"
+        TRAILER_LENGTH="${TRAILER_LENGTH:-${CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET:-}}"
+        STREET_1="${STREET_1:-${CAMPSITE_GET_SITE_STREET_1:-}}"
+        CITY="${CITY:-${CAMPSITE_GET_SITE_CITY:-}}"
+        STATE="${STATE:-${CAMPSITE_GET_SITE_STATE:-}}"
+        POSTAL_CODE="${POSTAL_CODE:-${ZIPCODE:-}}"
+        POSTAL_CODE="${POSTAL_CODE:-${CAMPSITE_GET_SITE_POSTAL_CODE:-}}"
+        POSTAL_CODE="${POSTAL_CODE:-${CAMPSITE_GET_SITE_ZIPCODE:-}}"
+        : "${SITE:?SITE is required, e.g. SITE=131}"
+        : "${START_DATE:?START_DATE is required, e.g. START_DATE=8/21/26}"
+        : "${NIGHTS:?NIGHTS is required, e.g. NIGHTS=2}"
+        : "${CAMPGROUND_URL:?CAMPGROUND_URL is required}"
+        : "${OCCUPANT:?OCCUPANT is required, e.g. OCCUPANT='Brandon Foster'}"
+        uv run --extra browser python app.py \
+          --cdp-url "{{.CDP_URL}}" \
+          --get-reservecalifornia-site \
+          --park-url "$CAMPGROUND_URL" \
+          --site "$SITE" \
+          --start-date "$START_DATE" \
+          --nights "$NIGHTS" \
+          --adults "${ADULTS:-${CAMPSITE_GET_SITE_ADULTS:-2}}" \
+          --children "${CHILDREN:-${CAMPSITE_GET_SITE_CHILDREN:-2}}" \
+          --occupant-name "$OCCUPANT" \
+          --camping-unit "${CAMPING_UNIT:-${CAMPSITE_GET_SITE_CAMPING_UNIT:-Trailer}}" \
+          ${TRAILER_LENGTH:+--trailer-length-feet "$TRAILER_LENGTH"} \
+          --street-1 "$STREET_1" \
+          --city "$CITY" \
+          --state "$STATE" \
+          --postal-code "$POSTAL_CODE" \
+          --refresh-window-start "00:00:00" \
+          --refresh-window-end "23:59:59" \
+          --refresh-interval-seconds "${REFRESH_INTERVAL_SECONDS:-${CAMPSITE_GET_SITE_REFRESH_INTERVAL_SECONDS:-0.2}}" \
+          --max-run-seconds "${MAX_RUN_SECONDS:-${CAMPSITE_GET_SITE_MAX_RUN_SECONDS:-20}}" \
+          ${NO_CLICK_BOOK_NOW:+--no-click-book-now} \
+          ${NO_CLICK_RESERVE_UNIT:+--no-click-reserve-unit}
+
   discover:
     desc: Discover Outdoorithm campground IDs for a state, e.g. `task discover -- CA`
     cmds:

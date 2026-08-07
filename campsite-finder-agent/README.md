@@ -4,7 +4,11 @@ A local-first Recreation.gov campsite availability watcher. It attaches to a Chr
 
 This first version focuses on discovery and alerting. It does not auto-book or modify reservations.
 
-## Setup
+## Getting Started
+
+This agent is designed to run locally from a browser session you control. It uses Chrome remote debugging so it can reuse your logged-in Recreation.gov session when a provider requires login, while keeping credentials and tokens out of the repo.
+
+### Install
 
 ```bash
 cd campsite-finder-agent
@@ -13,16 +17,32 @@ cp config/searches.example.yaml config/searches.yaml
 uv sync --extra dev --extra browser
 ```
 
-Start a dedicated Chrome profile with CDP enabled:
+### Start Chrome
+
+Start a dedicated Chrome profile with CDP enabled. Keep this browser open for scans that need a browser session:
 
 ```bash
 task chrome
 ```
 
-Log in to Recreation.gov in that Chrome window if needed, then run:
+Log in to Recreation.gov in that Chrome window if needed.
+
+### Configure Searches
+
+Edit `config/searches.yaml` with the campgrounds, dates, nights, filters, and preferences you care about. The checked-in `config/searches.example.yaml` is safe to copy and edit locally.
+
+### Run A Scan
 
 ```bash
 task scan
+```
+
+The scan writes current matches to `data/matches.json` and `data/matches.csv`. Those files are ignored by git.
+
+### Run Tests
+
+```bash
+task test
 ```
 
 ## Configuration
@@ -129,6 +149,34 @@ Unload it with:
 launchctl bootout gui/$(id -u)/com.bfoster.campsite-finder-agent.hourly
 ```
 
+To run the ReserveCalifornia lock scan once per day at 7:00 AM local Mac time, install the daily LaunchAgent:
+
+```bash
+mkdir -p ~/Library/LaunchAgents
+cp launchd/com.bfoster.campsite-finder-agent.daily-locks.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bfoster.campsite-finder-agent.daily-locks.plist
+```
+
+The daily lock script starts `task chrome` only when Chrome CDP is not already responding, then runs:
+
+```bash
+task locks:reservecalifornia
+```
+
+Check it with:
+
+```bash
+launchctl print gui/$(id -u)/com.bfoster.campsite-finder-agent.daily-locks
+tail -n 80 data/logs/daily-lock-scan.log
+tail -n 80 data/logs/daily-lock-launchd.err.log
+```
+
+Unload it with:
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.bfoster.campsite-finder-agent.daily-locks.plist
+```
+
 For faster local testing, save fetched campground data once:
 
 ```bash
@@ -183,6 +231,100 @@ CAMPSITE_NOTIFICATION_STATE_PATH=./data/notifications.json
 An email is sent when a scored match meets the minimum score or has a suggested action in `CAMPSITE_AI_NOTIFY_ACTIONS`. Sent `state_key`s are recorded so the hourly scan does not send the same alert repeatedly. If Gmail auth fails, the scan logs a warning and still writes match outputs. If a copied token cannot refresh, delete `data/gmail_token.json` and run a scan once to complete a fresh OAuth flow.
 
 ReserveCalifornia searches use the site's grid availability endpoint through the attached browser session. The agent requests 21-day grid batches and parses per-site daily availability from the JSON response, which is much faster than clicking through every possible arrival date.
+
+ReserveCalifornia lock icons can be scanned separately from the normal availability matcher. Add `locked_searches` entries using a list of campgrounds plus the same availability, filter, alert, and preference shape as regular searches:
+
+```yaml
+locked_searches:
+  - name: doheny-south-loop-locked-fri-sun
+    campgrounds:
+      - name: Doheny SB South Loop
+        provider: reservecalifornia
+        url: https://www.reservecalifornia.com/park/639/464
+      - name: San Clemente SB
+        provider: reservecalifornia
+        url: https://www.reservecalifornia.com/park/706/432
+    availability:
+      start: 2026-08-07
+      end: 2026-08-10
+      nights: 2
+      check_in_weekdays: [Friday]
+    filters:
+      site_type_exclude: []
+    preferences:
+      likes: [beach access, South Loop]
+      must_haves: [locked sites that open at 8am]
+```
+
+Then run:
+
+```bash
+task locks:reservecalifornia
+```
+
+This writes `data/locked-matches.json`, `data/locked-matches.csv`, and AI notes when enabled. It reports stay windows where every night has a non-empty `Lock` value, which is the data behind the lock icon shown before a site opens for booking.
+
+`nights` follows the normal reservation convention: a Friday check-in with `nights: 2` reports a Sunday checkout. For ReserveCalifornia lock scans, the matcher requires lock icons from the check-in date through the checkout date, because a reserved checkout-day cell can prevent booking the full stay.
+
+For one-off debugging, pass the URL and dates directly:
+
+```bash
+task locks:reservecalifornia -- --park-url https://www.reservecalifornia.com/park/639/464 --start-date 2026-08-07 --end-date 2026-08-09 --site 90
+```
+
+Use `--locks-output data/reservecalifornia-locks.json` or a `.csv` path to write one-off raw lock slices to a file.
+
+For a timed ReserveCalifornia booking assist, open Chrome with CDP, sign in, and run:
+
+```bash
+task get_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666 OCCUPANT="Your Name"
+```
+
+By default this refreshes once per second from 7:59:30 AM to 8:01:00 AM America/Los_Angeles, clicks the matching site cell for `START_DATE` if it becomes selectable, clicks the enabled `Book Now` button, acknowledges an `OK` alert popup if one appears, validates that the reservation details page shows the requested arrival date and `NIGHTS`, fills pre-cart details, accepts terms, clicks `Reserve Unit`, then clicks `Go To Checkout` if it appears. If checkout address fields are configured, it fills those too. It does not complete payment or enter card details. Override the window with:
+
+```bash
+task get_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666 OCCUPANT="Your Name" REFRESH_WINDOW_START=07:59:00 REFRESH_WINDOW_END=08:02:00
+```
+
+To practice on a site that is already open, use the immediate bounded runner:
+
+```bash
+task practice_site -- SITE=131 START_DATE=8/21/26 NIGHTS=2 CAMPGROUND_URL=https://www.reservecalifornia.com/park/709/666 OCCUPANT="Your Name"
+```
+
+Practice mode polls every 0.2 seconds for up to 20 seconds by default. Override with `REFRESH_INTERVAL_SECONDS=0.1` or `MAX_RUN_SECONDS=60`.
+
+Required booking-assist values are `SITE`, `START_DATE`, `NIGHTS`, `CAMPGROUND_URL`, and `OCCUPANT`. Set them on the task command or persist them in `.env`:
+
+```env
+CAMPSITE_GET_SITE_SITE="Campsite #G048"
+CAMPSITE_GET_SITE_START_DATE=8/21/26
+CAMPSITE_GET_SITE_NIGHTS=2
+CAMPSITE_GET_SITE_CAMPGROUND_URL=https://www.reservecalifornia.com/park/7/365
+CAMPSITE_GET_SITE_OCCUPANT="Your Name"
+CAMPSITE_GET_SITE_ADULTS=2
+CAMPSITE_GET_SITE_CHILDREN=2
+CAMPSITE_GET_SITE_CAMPING_UNIT=Trailer
+CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET=18
+CAMPSITE_GET_SITE_STREET_1="123 Main St"
+CAMPSITE_GET_SITE_CITY=Sacramento
+CAMPSITE_GET_SITE_STATE=CA
+CAMPSITE_GET_SITE_POSTAL_CODE=95814
+```
+
+Task command values override `.env` values. With those `.env` values set, this is enough:
+
+```bash
+task practice_site -- NO_CLICK_RESERVE_UNIT=1
+```
+
+`OCCUPANT` is the task variable name. In `.env`, use `CAMPSITE_GET_SITE_OCCUPANT`; `CAMPSITE_GET_SITE_OCCUPANT_NAME` is also accepted for compatibility.
+
+Vehicle length is set to the smallest non-`No Vehicle` option that fits `TRAILER_LENGTH` or `CAMPSITE_GET_SITE_TRAILER_LENGTH_FEET`. For example, an 18-foot trailer chooses `< 24` when that option is available. If no option fits, the command fails before clicking `Reserve Unit`. If no trailer length is configured, it falls back to the smallest non-`No Vehicle` option.
+
+Checkout address details can be set with `STREET_1`, `CITY`, `STATE`, and `POSTAL_CODE` task variables or with their `CAMPSITE_GET_SITE_*` `.env` equivalents. `ZIPCODE` and `CAMPSITE_GET_SITE_ZIPCODE` are accepted aliases for `POSTAL_CODE`. If any checkout address value is provided, all four are required. The helper fills address fields on the checkout screen only after `Reserve Unit` and `Go To Checkout`; it still stops before card payment.
+
+For a date-picker-only or grid-selection-only rehearsal, add `NO_CLICK_BOOK_NOW=1`.
 
 Recreation.gov searches also use direct availability API requests through the attached browser session. The agent opens campground pages only when login is required or a fallback fetch is needed.
 

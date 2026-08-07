@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from campsite_finder_agent.alerts import EmailAlertSettings, notify_ai_match_windows
+from campsite_finder_agent.alerts import EmailAlertSettings, notify_ai_match_windows, render_email_body
 from campsite_finder_agent.models import MatchWindow
 
 
@@ -24,6 +24,7 @@ def make_match_window(score: float = 8.5, action: str = "watch") -> MatchWindow:
         representative_site_type="STANDARD",
         representative_loop="Beach Loop",
         matching_campsite_ids=["101", "102"],
+        unlock_times=["2026-08-07T08:00:00"],
         ai_score=score,
         ai_fit="strong",
         ai_reasons=["coastal", "rv-friendly"],
@@ -104,3 +105,12 @@ def test_notify_ai_match_windows_does_not_record_state_when_email_fails(tmp_path
     assert sent_count == 0
     assert not (tmp_path / "notifications.json").exists()
 
+
+def test_render_email_body_includes_match_details() -> None:
+    body = render_email_body([make_match_window()])
+
+    assert "South Carlsbad State Beach" in body
+    assert "Campsite: Site 101" in body
+    assert "Dates: 2026-08-08 to 2026-08-10 (2 nights)" in body
+    assert "URL: https://outdoorithm.com/campgrounds/ca/south-carlsbad" in body
+    assert "Unlock times: 2026-08-07T08:00:00" in body

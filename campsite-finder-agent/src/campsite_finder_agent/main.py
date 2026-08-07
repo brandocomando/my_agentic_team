@@ -17,10 +17,16 @@ from campsite_finder_agent.alerts import EmailAlertSettings, alert_match_windows
 from campsite_finder_agent.availability import find_matches
 from campsite_finder_agent.cache import describe_cached_ranges, load_cached_campground_campsites, save_cached_campground_campsites
 from campsite_finder_agent.config import load_config, load_settings
-from campsite_finder_agent.models import AppConfig, DateWindow, Match, MatchWindow, SearchConfig
+from campsite_finder_agent.models import AppConfig, DateWindow, LockedSearchConfig, Match, MatchWindow, SearchConfig
 from campsite_finder_agent.outdoorithm import discover_campground_catalog_for_state, discover_searches_for_search_set
 from campsite_finder_agent.providers import fetch_campsites_for_search
-from campsite_finder_agent.reserve_california import capture_reserve_california_network
+from campsite_finder_agent.reserve_california import (
+    ReserveCaliforniaLock,
+    capture_reserve_california_network,
+    find_locked_matches,
+    fetch_locked_campsites,
+    get_reserve_california_site,
+)
 from campsite_finder_agent.results import aggregate_match_windows
 from campsite_finder_agent.state import filter_stateful_match_windows, load_state
 
@@ -31,6 +37,8 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=settings.config_path)
     parser.add_argument("--output", type=Path, default=settings.output_path)
     parser.add_argument("--csv-output", type=Path, default=settings.csv_output_path)
+    parser.add_argument("--lock-output", type=Path, default=settings.lock_output_path)
+    parser.add_argument("--lock-csv-output", type=Path, default=settings.lock_csv_output_path)
     parser.add_argument("--cache-path", type=Path, default=settings.cache_path)
     parser.add_argument("--raw-data-path", type=Path, default=settings.raw_data_path)
     parser.add_argument("--state-path", type=Path, default=settings.state_path)
@@ -50,14 +58,144 @@ def main() -> None:
     parser.add_argument("--watch", action="store_true", help="Keep scanning until interrupted.")
     parser.add_argument("--interval-seconds", type=int, default=300)
     parser.add_argument(
+        "--reservecalifornia-locks",
+        action="store_true",
+        help="Report ReserveCalifornia grid lock icons for a park URL/date range.",
+    )
+    parser.add_argument(
+        "--park-url",
+        default=settings.get_site_campground_url or None,
+        help="ReserveCalifornia park URL, e.g. https://www.reservecalifornia.com/park/639/464.",
+    )
+    parser.add_argument(
+        "--start-date",
+        default=settings.get_site_start_date or None,
+        help="First date to inspect, e.g. 2026-08-07.",
+    )
+    parser.add_argument("--end-date", help="Last date to inspect, e.g. 2026-08-09.")
+    parser.add_argument(
+        "--nights",
+        type=int,
+        default=settings.get_site_nights,
+        help="Expected ReserveCalifornia stay length in nights.",
+    )
+    parser.add_argument(
+        "--site",
+        action="append",
+        default=[settings.get_site_site] if settings.get_site_site else [],
+        help="Limit lock scan to a site number/name. Repeatable.",
+    )
+    parser.add_argument("--locks-output", type=Path, help="Optional JSON or CSV output path for one-off ReserveCalifornia locks.")
+    parser.add_argument(
+        "--get-reservecalifornia-site",
+        action="store_true",
+        help="Refresh a ReserveCalifornia grid and click a target site cell when it opens.",
+    )
+    parser.add_argument(
+        "--refresh-window-start",
+        default=settings.get_site_refresh_window_start,
+        help="Local refresh start time, HH:MM[:SS].",
+    )
+    parser.add_argument("--refresh-window-end", default=settings.get_site_refresh_window_end, help="Local refresh end time, HH:MM[:SS].")
+    parser.add_argument("--refresh-timezone", default=settings.get_site_refresh_timezone)
+    parser.add_argument("--refresh-interval-seconds", type=float, default=settings.get_site_refresh_interval_seconds)
+    parser.add_argument("--max-run-seconds", type=float, default=settings.get_site_max_run_seconds, help="Cap a get-site run after this many seconds.")
+    parser.add_argument("--adults", type=int, default=settings.get_site_adults)
+    parser.add_argument("--children", type=int, default=settings.get_site_children)
+    parser.add_argument("--occupant-name", default=settings.get_site_occupant or settings.get_site_occupant_name)
+    parser.add_argument("--camping-unit", default=settings.get_site_camping_unit)
+    parser.add_argument("--trailer-length-feet", type=float, default=settings.get_site_trailer_length_feet)
+    parser.add_argument("--street-1", default=settings.get_site_street_1)
+    parser.add_argument("--city", default=settings.get_site_city)
+    parser.add_argument("--state", default=settings.get_site_state)
+    parser.add_argument("--postal-code", default=settings.get_site_postal_code or settings.get_site_zipcode)
+    parser.add_argument("--zipcode", default=settings.get_site_zipcode)
+    parser.add_argument("--no-click-book-now", action="store_true", help="Click only the site cell; do not click Book Now.")
+    parser.add_argument("--no-click-reserve-unit", action="store_true", help="Fill reservation details but do not click Reserve Unit.")
+    parser.add_argument(
         "--debug-reservecalifornia-network",
         action="store_true",
         help="Reload the open ReserveCalifornia tab and print captured JSON/API responses.",
     )
     args = parser.parse_args()
 
+    if args.get_reservecalifornia_site:
+        result = run_reserve_california_get_site(
+            args.cdp_url,
+            args.park_url,
+            args.site,
+            args.start_date,
+            args.refresh_window_start,
+            args.refresh_window_end,
+            args.refresh_timezone,
+            args.refresh_interval_seconds,
+            args.max_run_seconds,
+            args.nights,
+            args.adults,
+            args.children,
+            args.occupant_name,
+            args.camping_unit,
+            args.trailer_length_feet,
+            args.street_1,
+            args.city,
+            args.state,
+            args.postal_code or args.zipcode,
+            not args.no_click_book_now,
+            not args.no_click_reserve_unit,
+        )
+        Console().print(
+            f"ReserveCalifornia get-site finished: {result.action} "
+            f"after {result.attempts} attempt(s); Book Now clicked: {result.book_now_clicked}; "
+            f"Reserve Unit clicked: {result.reserve_unit_clicked}."
+        )
+        return
     if args.debug_reservecalifornia_network:
         print(json.dumps(capture_reserve_california_network(args.cdp_url), indent=2))
+        return
+    if args.reservecalifornia_locks:
+        if args.park_url:
+            locks = run_reserve_california_lock_scan(
+                args.cdp_url,
+                args.park_url,
+                args.start_date,
+                args.end_date,
+                set(args.site),
+                args.locks_output,
+            )
+            Console(stderr=not bool(args.locks_output)).print(f"Found {len(locks)} ReserveCalifornia lock slice(s).")
+        else:
+            lock_matches = run_configured_reserve_california_lock_scan(
+                args.config,
+                args.cdp_url,
+                args.search_delay_seconds,
+            )
+            lock_windows = aggregate_match_windows(lock_matches)
+            ai_summary = ""
+            if lock_windows and not args.no_ai:
+                try:
+                    ai_summary = analyze_match_windows_with_ollama(
+                        lock_windows,
+                        preferences_by_search(load_config(args.config)),
+                        model=args.ollama_model,
+                        base_url=args.ollama_base_url,
+                    )
+                    Console().print(ai_summary)
+                except Exception as exc:
+                    Console().print(f"[yellow]Skipping AI analysis:[/yellow] {exc}")
+            write_matches(args.lock_output, lock_windows)
+            write_matches_csv(args.lock_csv_output, lock_windows)
+            if ai_summary:
+                write_ai_summary(args.lock_output.with_suffix(".ai.md"), ai_summary)
+                notify_ai_match_windows(lock_windows, email_alert_settings(settings))
+            else:
+                remove_matches_file(args.lock_output.with_suffix(".ai.md"))
+            if lock_windows:
+                Console().print(
+                    f"Wrote {len(lock_windows)} ReserveCalifornia locked availability window(s) "
+                    f"from {len(lock_matches)} raw locked site match(es) to {args.lock_output} and {args.lock_csv_output}."
+                )
+            else:
+                Console().print("No configured ReserveCalifornia locked availability windows found.")
         return
     if args.discover_state:
         output_path = discover_state_catalog(args.discover_state)
@@ -278,8 +416,204 @@ def discover_state_catalog(state: str) -> Path:
     return output_path
 
 
+def run_reserve_california_get_site(
+    cdp_url: str,
+    park_url: str | None,
+    sites: list[str],
+    start_date: str | None,
+    refresh_window_start: str,
+    refresh_window_end: str,
+    refresh_timezone: str,
+    refresh_interval_seconds: float,
+    max_run_seconds: float | None,
+    nights: int | None,
+    adults: int,
+    children: int,
+    occupant_name: str,
+    camping_unit: str,
+    trailer_length_feet: float | None,
+    street_1: str,
+    city: str,
+    state: str,
+    postal_code: str,
+    click_book_now: bool,
+    click_reserve_unit: bool,
+):
+    if not park_url:
+        raise RuntimeError("--park-url is required with --get-reservecalifornia-site.")
+    if not sites:
+        raise RuntimeError("--site is required with --get-reservecalifornia-site.")
+    if not start_date:
+        raise RuntimeError("--start-date is required with --get-reservecalifornia-site.")
+    if nights is None:
+        raise RuntimeError("--nights is required with --get-reservecalifornia-site.")
+    if not occupant_name.strip():
+        raise RuntimeError("--occupant-name is required with --get-reservecalifornia-site.")
+    address_values = [street_1.strip(), city.strip(), state.strip(), postal_code.strip()]
+    if any(address_values) and not all(address_values):
+        raise RuntimeError("--street-1, --city, --state, and --postal-code are all required when filling checkout address details.")
+    return get_reserve_california_site(
+        cdp_url=cdp_url,
+        park_url=park_url,
+        site=sites[0],
+        start_date=parse_cli_date(start_date),
+        nights=nights,
+        refresh_window_start=refresh_window_start,
+        refresh_window_end=refresh_window_end,
+        timezone_name=refresh_timezone,
+        refresh_interval_seconds=refresh_interval_seconds,
+        max_run_seconds=max_run_seconds,
+        click_book_now=click_book_now,
+        adults=adults,
+        children=children,
+        occupant_name=occupant_name,
+        camping_unit=camping_unit,
+        trailer_length_feet=trailer_length_feet,
+        street_1=street_1,
+        city=city,
+        state=state,
+        postal_code=postal_code,
+        click_reserve_unit=click_reserve_unit,
+    )
+
+
+def parse_cli_date(value: str) -> date:
+    value = value.strip()
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        pass
+    for format_ in ("%m/%d/%y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(value, format_).date()
+        except ValueError:
+            continue
+    raise RuntimeError(f"Expected date as YYYY-MM-DD, M/D/YY, or M/D/YYYY; got {value!r}.")
+
+
+def run_reserve_california_lock_scan(
+    cdp_url: str,
+    park_url: str | None,
+    start_date: str | None,
+    end_date: str | None,
+    sites: set[str],
+    output_path: Path | None,
+) -> list[ReserveCaliforniaLock]:
+    if not park_url:
+        raise RuntimeError("--park-url is required with --reservecalifornia-locks.")
+    if not start_date or not end_date:
+        raise RuntimeError("--start-date and --end-date are required with --reservecalifornia-locks.")
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+    if end < start:
+        raise RuntimeError("--end-date must be on or after --start-date.")
+    locks = fetch_locked_campsites(cdp_url, park_url, start, end, site_names=sites or None)
+    rows = [reserve_california_lock_row(lock) for lock in locks]
+    if output_path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if output_path.suffix.lower() == ".csv":
+            write_reserve_california_locks_csv(output_path, rows)
+        else:
+            with output_path.open("w") as handle:
+                json.dump(rows, handle, indent=2)
+                handle.write("\n")
+        Console().print(f"Wrote ReserveCalifornia locks to {output_path}.")
+    else:
+        print(json.dumps(rows, indent=2))
+    return locks
+
+
+def run_configured_reserve_california_lock_scan(
+    config_path: Path,
+    cdp_url: str,
+    search_delay_seconds: float,
+) -> list[Match]:
+    console = Console()
+    config = load_config(config_path)
+    searches = expand_locked_searches(config.locked_searches)
+    if not searches:
+        raise RuntimeError("No `locked_searches` are configured.")
+    all_matches: list[Match] = []
+    last_network_domain: str | None = None
+    for group in interleave_search_groups_by_domain(group_searches_by_campground(searches)):
+        search_domain = domain_for_url(group.campground_url)
+        if search_domain != "reservecalifornia.com" and not search_domain.endswith(".reservecalifornia.com"):
+            console.print(f"[yellow]Skipping non-ReserveCalifornia lock search:[/yellow] {group.campground_name}")
+            continue
+        maybe_wait_between_network_searches(console, search_delay_seconds, last_network_domain, search_domain)
+        console.print(
+            f"Scanning ReserveCalifornia locks for [bold]{group.campground_name}[/bold] "
+            f"({len(group.searches)} search rule(s), {group.start.isoformat()} to {group.end.isoformat()})..."
+        )
+        locks = fetch_locked_campsites(cdp_url, group.campground_url, group.start, group.end)
+        last_network_domain = search_domain
+        for search in group.searches:
+            matches = find_locked_matches(search, locks)
+            if matches:
+                console.print(f"{len(matches)} raw locked site match(es) for {search.name}.")
+            else:
+                console.print(f"No locked matches for {search.name}.")
+            all_matches.extend(matches)
+    return all_matches
+
+
+def expand_locked_searches(locked_searches: list[LockedSearchConfig]) -> list[SearchConfig]:
+    searches: list[SearchConfig] = []
+    for locked_search in locked_searches:
+        for campground in locked_search.campgrounds:
+            searches.append(
+                SearchConfig(
+                    name=locked_search.name,
+                    campground=campground,
+                    date_window=locked_search.date_window,
+                    filters=locked_search.filters,
+                    alert=locked_search.alert,
+                    preferences=locked_search.preferences,
+                    require_login=locked_search.require_login,
+                )
+            )
+    return searches
+
+
+def reserve_california_lock_row(lock: ReserveCaliforniaLock) -> dict[str, object]:
+    return {
+        "campsite_id": lock.campsite_id,
+        "campsite_name": lock.campsite_name,
+        "short_name": lock.short_name,
+        "date": lock.date.isoformat(),
+        "lock_at": lock.lock_at,
+        "is_free": lock.is_free,
+        "is_blocked": lock.is_blocked,
+        "reservation_id": lock.reservation_id,
+        "site_type": lock.site_type,
+        "max_vehicle_length": lock.max_vehicle_length,
+        "accessible": lock.accessible,
+    }
+
+
+def write_reserve_california_locks_csv(output_path: Path, rows: list[dict[str, object]]) -> None:
+    fieldnames = [
+        "campsite_id",
+        "campsite_name",
+        "short_name",
+        "date",
+        "lock_at",
+        "is_free",
+        "is_blocked",
+        "reservation_id",
+        "site_type",
+        "max_vehicle_length",
+        "accessible",
+    ]
+    with output_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def preferences_by_search(config: AppConfig) -> dict[str, object]:
     preferences = {search.name: search.preferences for search in config.searches}
+    preferences.update({search.name: search.preferences for search in config.locked_searches})
     for search_set in config.search_sets:
         preferences[search_set.name] = search_set.preferences
     return preferences
@@ -412,6 +746,7 @@ def write_matches_csv(path: Path, matches: list[MatchWindow]) -> None:
                 "representative_site_type",
                 "representative_loop",
                 "matching_campsite_ids",
+                "unlock_times",
                 "matching_start_count",
                 "ai_score",
                 "ai_fit",
@@ -442,6 +777,7 @@ def write_matches_csv(path: Path, matches: list[MatchWindow]) -> None:
                     "representative_site_type": match.representative_site_type,
                     "representative_loop": match.representative_loop,
                     "matching_campsite_ids": "; ".join(match.matching_campsite_ids),
+                    "unlock_times": "; ".join(match.unlock_times),
                     "ai_score": match.ai_score,
                     "ai_fit": match.ai_fit,
                     "ai_reasons": "; ".join(match.ai_reasons),

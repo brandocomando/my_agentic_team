@@ -11,14 +11,18 @@ from campsite_finder_agent.availability import (
     month_starts,
     parse_campsites,
 )
+from campsite_finder_agent.main import expand_locked_searches
 from campsite_finder_agent.models import AppConfig, Campsite, Provider
 from campsite_finder_agent.providers import infer_provider
 from campsite_finder_agent.recreation import fetch_json_from_request_context, is_rate_limit_error
 from campsite_finder_agent.reserve_california import (
+    ReserveCaliforniaLock,
+    find_locked_matches,
     grid_date_batches,
     infer_selected_stay_availabilities,
     infer_visible_availabilities,
     parse_grid_campsites,
+    parse_grid_locks,
     reserve_california_ids_from_url,
 )
 
@@ -100,6 +104,50 @@ def test_find_matches_for_thursday_to_sunday() -> None:
     assert matches[0].campsite_id == "101"
     assert matches[0].check_in == date(2026, 8, 6)
     assert matches[0].check_out == date(2026, 8, 9)
+
+
+def test_two_nights_requires_two_occupied_dates_and_checkout_on_third_day() -> None:
+    search = AppConfig.model_validate(
+        {
+            "searches": [
+                {
+                    "name": "weekend",
+                    "campground": {
+                        "name": "Camp",
+                        "url": "https://www.recreation.gov/camping/campgrounds/232447",
+                    },
+                    "date_window": {
+                        "start": "2026-08-07",
+                        "end": "2026-08-10",
+                        "nights": 2,
+                        "check_in_weekdays": ["Friday"],
+                    },
+                }
+            ]
+        }
+    ).searches[0]
+    campsites = parse_campsites(
+        {
+            "campsites": {
+                "90": {
+                    "campsite_id": "90",
+                    "site": "90",
+                    "availabilities": {
+                        "2026-08-07T00:00:00Z": "Available",
+                        "2026-08-08T00:00:00Z": "Available",
+                        "2026-08-09T00:00:00Z": "Reserved",
+                    },
+                }
+            }
+        }
+    )
+
+    matches = find_matches(search, campsites)
+
+    assert len(matches) == 1
+    assert matches[0].check_in == date(2026, 8, 7)
+    assert matches[0].check_out == date(2026, 8, 9)
+    assert matches[0].availability == ["Available", "Available"]
 
 
 def test_site_type_exclude_filters_site_type_text() -> None:
@@ -394,3 +442,161 @@ def test_parse_reserve_california_grid_campsites() -> None:
         date(2026, 12, 3): "Available",
         date(2026, 12, 4): "Unavailable",
     }
+
+
+def test_parse_reserve_california_grid_locks() -> None:
+    locks = parse_grid_locks(
+        {
+            "Facility": {
+                "Units": {
+                    "bucket3.40650": {
+                        "UnitId": 40650,
+                        "Name": "Campsite #90",
+                        "ShortName": "90",
+                        "Slices": {
+                            "2026-08-07T00:00:00": {
+                                "Date": "2026-08-07",
+                                "IsFree": False,
+                                "IsBlocked": False,
+                                "ReservationId": 0,
+                                "Lock": "2026-08-06T08:00:00",
+                            },
+                            "2026-08-08T00:00:00": {
+                                "Date": "2026-08-08",
+                                "IsFree": False,
+                                "IsBlocked": False,
+                                "ReservationId": 0,
+                                "Lock": "2026-08-06T08:00:00",
+                            },
+                        },
+                    },
+                    "bucket3.40651": {
+                        "UnitId": 40651,
+                        "Name": "Campsite #91",
+                        "ShortName": "91",
+                        "Slices": {
+                            "2026-08-07T00:00:00": {
+                                "Date": "2026-08-07",
+                                "IsFree": False,
+                                "IsBlocked": False,
+                                "ReservationId": 123,
+                                "Lock": None,
+                            },
+                        },
+                    },
+                }
+            }
+        },
+        site_names={"90"},
+    )
+
+    assert len(locks) == 2
+    assert locks[0].campsite_id == "40650"
+    assert locks[0].campsite_name == "Campsite #90"
+    assert locks[0].short_name == "90"
+    assert locks[0].date == date(2026, 8, 7)
+    assert locks[0].lock_at == "2026-08-06T08:00:00"
+    assert locks[0].reservation_id == 0
+
+
+def test_find_reserve_california_locked_matches_for_stay() -> None:
+    search = AppConfig.model_validate(
+        {
+            "locked_searches": [
+                {
+                    "name": "doheny-locked",
+                    "campgrounds": [
+                        {
+                            "name": "Doheny SB South Loop",
+                            "provider": "reservecalifornia",
+                            "url": "https://www.reservecalifornia.com/park/639/464",
+                        }
+                    ],
+                    "availability": {
+                        "start": "2026-08-07",
+                        "end": "2026-08-10",
+                        "nights": 2,
+                        "check_in_weekdays": ["Friday"],
+                    },
+                    "filters": {"min_vehicle_length": 20},
+                }
+            ]
+        }
+    ).locked_searches
+    search = expand_locked_searches(search)[0]
+    locks = [
+        ReserveCaliforniaLock(
+            campsite_id="40650",
+            campsite_name="Campsite #90",
+            short_name="90",
+            date=date(2026, 8, 7),
+            lock_at="2026-08-06T08:00:00",
+            is_free=False,
+            is_blocked=False,
+            reservation_id=0,
+            site_type="4303",
+            max_vehicle_length=30,
+        ),
+        ReserveCaliforniaLock(
+            campsite_id="40650",
+            campsite_name="Campsite #90",
+            short_name="90",
+            date=date(2026, 8, 8),
+            lock_at="2026-08-06T08:00:00",
+            is_free=False,
+            is_blocked=False,
+            reservation_id=0,
+            site_type="4303",
+            max_vehicle_length=30,
+        ),
+        ReserveCaliforniaLock(
+            campsite_id="40650",
+            campsite_name="Campsite #90",
+            short_name="90",
+            date=date(2026, 8, 9),
+            lock_at="2026-08-06T08:00:00",
+            is_free=False,
+            is_blocked=False,
+            reservation_id=0,
+            site_type="4303",
+            max_vehicle_length=30,
+        ),
+        ReserveCaliforniaLock(
+            campsite_id="40651",
+            campsite_name="Campsite #91",
+            short_name="91",
+            date=date(2026, 8, 7),
+            lock_at="2026-08-06T08:00:00",
+            is_free=False,
+            is_blocked=False,
+            reservation_id=0,
+            site_type="4303",
+            max_vehicle_length=30,
+        ),
+        ReserveCaliforniaLock(
+            campsite_id="40651",
+            campsite_name="Campsite #91",
+            short_name="91",
+            date=date(2026, 8, 8),
+            lock_at="2026-08-06T08:00:00",
+            is_free=False,
+            is_blocked=False,
+            reservation_id=0,
+            site_type="4303",
+            max_vehicle_length=30,
+        ),
+    ]
+
+    matches = find_locked_matches(search, locks)
+
+    assert len(matches) == 1
+    assert matches[0].search_name == "doheny-locked"
+    assert matches[0].campsite_id == "40650"
+    assert matches[0].check_in == date(2026, 8, 7)
+    assert matches[0].check_out == date(2026, 8, 9)
+    assert matches[0].availability == [
+        "Locked until 2026-08-06T08:00:00",
+        "Locked until 2026-08-06T08:00:00",
+        "Locked until 2026-08-06T08:00:00",
+    ]
+    assert matches[0].unlock_times == ["2026-08-06T08:00:00"]
