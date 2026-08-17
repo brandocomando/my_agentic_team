@@ -24,6 +24,8 @@ For maintainers with direct access, still use a branch and pull request instead 
 
 - [Gmail Inbox Agent contributing guide](gmail-inbox-agent/CONTRIBUTING.md)
 - [Gmail Inbox Agent README](gmail-inbox-agent/README.md)
+- [GitHub Agent contributing guide](github-agent/CONTRIBUTING.md)
+- [GitHub Agent README](github-agent/README.md)
 
 When adding a new agent, include:
 
