@@ -4,6 +4,10 @@ A local-first Recreation.gov campsite availability watcher. It attaches to a Chr
 
 This first version focuses on discovery and alerting. It does not auto-book or modify reservations.
 
+## Documentation
+
+- [Architecture](docs/Architecture.md)
+
 ## Getting Started
 
 This agent is designed to run locally from a browser session you control. It uses Chrome remote debugging so it can reuse your logged-in Recreation.gov session when a provider requires login, while keeping credentials and tokens out of the repo.
