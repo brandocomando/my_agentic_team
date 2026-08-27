@@ -102,6 +102,10 @@ Only after reviewing dry-run output, run:
 uv run gmail-inbox-agent --apply --max-messages 1
 ```
 
+`--apply` alone is not enough: you must also set `GMAIL_ENABLE_MAILBOX_CHANGES=true` in `.env`. If
+that flag is not enabled, `--apply` falls back to dry-run and prints a warning instead of mutating
+the mailbox.
+
 The agent still never deletes messages. Archive means removing the Gmail `INBOX` label from a thread.
 
 ## Public Repo Safety

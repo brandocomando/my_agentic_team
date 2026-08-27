@@ -40,6 +40,9 @@ task apply -- --max-messages 1
 task docker:dry-run -- --max-messages 10
 ```
 
+`--apply` (and `task apply`) only takes effect when `GMAIL_ENABLE_MAILBOX_CHANGES=true` is also set
+in `.env`. Without it, apply runs fall back to dry-run and print a warning.
+
 `task docker:run` builds the image and runs the agent with host-mounted `data/` and `config/`:
 
 ```bash
