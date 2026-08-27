@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     user_email: str = Field(default="", alias="USER_EMAIL")
     dry_run: bool = Field(default=True, alias="DRY_RUN")
     max_messages_per_run: int = Field(default=25, alias="MAX_MESSAGES_PER_RUN", ge=1)
+    mailbox_changes_enabled: bool = Field(default=False, alias="GMAIL_ENABLE_MAILBOX_CHANGES")
 
 
 def load_settings() -> Settings:

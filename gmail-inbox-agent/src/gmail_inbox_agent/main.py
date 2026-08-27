@@ -29,7 +29,9 @@ def main() -> None:
         run_auth_check(settings)
         return
 
-    dry_run, max_messages = resolve_run_options(args, settings.max_messages_per_run)
+    dry_run, max_messages = resolve_run_options(
+        args, settings.max_messages_per_run, settings.mailbox_changes_enabled
+    )
     state = run_agent(dry_run=dry_run, max_messages=max_messages)
     console.print(
         f"[bold]Done.[/bold] Processed {len(state.processed)} message(s), "
@@ -37,8 +39,17 @@ def main() -> None:
     )
 
 
-def resolve_run_options(args: argparse.Namespace, default_max_messages: int) -> tuple[bool, int]:
+def resolve_run_options(
+    args: argparse.Namespace, default_max_messages: int, mailbox_changes_enabled: bool = False
+) -> tuple[bool, int]:
     dry_run = not args.apply
+    if args.apply and not mailbox_changes_enabled:
+        dry_run = True
+        console.print(
+            "[yellow]Warning:[/yellow] --apply was passed but GMAIL_ENABLE_MAILBOX_CHANGES is not "
+            "enabled. Falling back to dry-run. Set GMAIL_ENABLE_MAILBOX_CHANGES=true in your .env "
+            "to allow mailbox mutations."
+        )
     max_messages = args.max_messages or default_max_messages
     return dry_run, max_messages
 

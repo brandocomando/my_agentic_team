@@ -41,6 +41,8 @@ The Gmail Inbox Agent must stay conservative:
 - Archive only by removing the Gmail `INBOX` label.
 - Skip agent-generated summary emails.
 - Keep secrets and personal data out of Git.
+- Mailbox mutations require both `--apply` on the CLI and `GMAIL_ENABLE_MAILBOX_CHANGES=true` in
+  config; `--apply` alone falls back to dry-run with a warning.
 
 ## Documentation
 

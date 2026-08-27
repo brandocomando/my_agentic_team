@@ -78,6 +78,9 @@ OLLAMA_MODEL=llama3.1:8b
 USER_EMAIL=your_email@gmail.com
 ```
 
+`GMAIL_ENABLE_MAILBOX_CHANGES` defaults to `false`. Even with `--apply` passed on the CLI, the
+agent stays in dry-run until you explicitly set `GMAIL_ENABLE_MAILBOX_CHANGES=true` in `.env`.
+
 4. Follow [Gmail OAuth setup](docs/Gmail_OAuth_Setup.md), then save your OAuth client file at:
 
 ```text
