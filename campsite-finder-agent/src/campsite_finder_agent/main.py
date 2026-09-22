@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from rich.console import Console
 
+from campsite_finder_agent import __version__
 from campsite_finder_agent.ai import analyze_match_windows_with_ollama, write_ai_summary
 from campsite_finder_agent.alerts import EmailAlertSettings, alert_match_windows, notify_ai_match_windows
 from campsite_finder_agent.availability import find_matches
@@ -35,6 +36,11 @@ from campsite_finder_agent.state import filter_stateful_match_windows, load_stat
 def main() -> None:
     settings = load_settings()
     parser = argparse.ArgumentParser(description="Find open Recreation.gov campsites.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"campsite-finder-agent {__version__}",
+    )
     parser.add_argument("--config", type=Path, default=settings.config_path)
     parser.add_argument("--output", type=Path, default=settings.output_path)
     parser.add_argument("--csv-output", type=Path, default=settings.csv_output_path)
