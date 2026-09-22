@@ -63,12 +63,18 @@ class LayaSurveySolver:
                         from laya import Router
 
                         if self._custom_models:
-                            self._router = Router(models=self._custom_models, preload=True)
+                            router = Router(models=self._custom_models, default=self._model_key, preload=False)
                         else:
-                            self._router = Router(preload=True)
+                            router = Router(default=self._model_key, preload=False)
+                        router.preload([self._model_key])
+                        self._router = router
                         self._initialized = True
                     except ImportError:
                         logger.info("laya package not installed; using fallback survey solver.")
+                        self._router = None
+                        self._initialized = True
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning("Failed to initialize Laya router (%s); falling back to Ollama.", exc)
                         self._router = None
                         self._initialized = True
         return self._router

@@ -337,3 +337,32 @@ def test_answer_endpoint_cache_behavior(tmp_path) -> None:
         assert res2.json()["answer"] == "Employed full-time"
         assert mock_laya.choose_answer.call_count == 1
 
+
+def test_answer_endpoint_warmup_exception_does_not_block_startup(tmp_path) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = MagicMock()
+    mock_ollama.embed = AsyncMock(return_value=[1.0, 0.0])
+    mock_ollama.choose_answer = AsyncMock(
+        return_value=AnswerResponse(
+            answer="Employed full-time",
+            choice_id="opt_2",
+            confidence=0.85,
+            reason="ollama:fallback",
+        )
+    )
+
+    mock_laya = MagicMock()
+    mock_laya.warmup.side_effect = RuntimeError("Model download failed during startup")
+    mock_laya.choose_answer.return_value = None
+
+    settings = Settings(db_path=tmp_path / "memory.sqlite", use_laya=True)
+    app = create_app(settings, ollama=mock_ollama, laya_solver=mock_laya)
+
+    # App should start up successfully without raising despite warmup failure
+    with TestClient(app) as client:
+        health_res = client.get("/health")
+        assert health_res.status_code == 200
+        assert health_res.json() == {"status": "ok"}
+
+

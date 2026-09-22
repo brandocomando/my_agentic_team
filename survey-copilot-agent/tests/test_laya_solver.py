@@ -247,3 +247,37 @@ def test_laya_solver_warmup() -> None:
     solver = LayaSurveySolver(router_instance=mock_router)
     solver.warmup()
     assert solver._ensure_router() is mock_router
+
+
+def test_laya_solver_router_init_exception_handled(monkeypatch) -> None:
+    # When Router raises an unexpected runtime exception on creation
+    from unittest.mock import MagicMock
+    import sys
+
+    mock_laya_mod = MagicMock()
+    mock_laya_mod.Router.side_effect = RuntimeError("Failed to load weights: corrupt file")
+    monkeypatch.setitem(sys.modules, "laya", mock_laya_mod)
+
+    solver = LayaSurveySolver()
+    router = solver._ensure_router()
+    assert router is None
+    assert solver._initialized is True
+
+
+def test_laya_solver_ensure_router_preloads_only_target_model(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+    import sys
+
+    mock_router_instance = MagicMock()
+    mock_router_cls = MagicMock(return_value=mock_router_instance)
+    mock_laya_mod = MagicMock()
+    mock_laya_mod.Router = mock_router_cls
+    monkeypatch.setitem(sys.modules, "laya", mock_laya_mod)
+
+    solver = LayaSurveySolver(model_name="convaiinnovations/laya-typed-decisions")
+    router = solver._ensure_router()
+
+    assert router is mock_router_instance
+    mock_router_cls.assert_called_once_with(default="typed-decisions", preload=False)
+    mock_router_instance.preload.assert_called_once_with(["typed-decisions"])
+

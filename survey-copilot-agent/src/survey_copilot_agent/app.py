@@ -50,7 +50,10 @@ def create_app(
         current_settings = getattr(app.state, "settings", settings)
         app.state.settings = current_settings
         if current_settings.use_laya and hasattr(current_laya, "warmup"):
-            await asyncio.to_thread(current_laya.warmup)
+            try:
+                await asyncio.to_thread(current_laya.warmup)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Laya warmup failed during startup (%s); service will fall back to Ollama.", exc)
         yield
 
     app = FastAPI(title="Survey Copilot Agent", lifespan=lifespan)
