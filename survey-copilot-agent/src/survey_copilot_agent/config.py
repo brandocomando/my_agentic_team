@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     ollama_chat_model: str = Field("llama3.1:8b", validation_alias="OLLAMA_CHAT_MODEL")
     ollama_embed_model: str = Field("nomic-embed-text", validation_alias="OLLAMA_EMBED_MODEL")
     answer_min_confidence: float = Field(0.62, validation_alias="ANSWER_MIN_CONFIDENCE")
+    use_laya: bool = Field(True, validation_alias="USE_LAYA")
+    laya_min_confidence: float = Field(0.70, validation_alias="LAYA_MIN_CONFIDENCE")
+    laya_model_name: str = Field("convaiinnovations/laya", validation_alias="LAYA_MODEL_NAME")
 
 
 @lru_cache

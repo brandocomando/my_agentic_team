@@ -12,7 +12,8 @@ The first target sites are `https://app.paidviewpoint.com/dashboard` and `https:
 - Private facts live in `config/profile.local.json`, which is ignored by Git.
 - Runtime memory lives in `data/memory.sqlite`, which is ignored by Git.
 - The backend returns `{"answer": null}` when no matching fact is found or confidence is below `ANSWER_MIN_CONFIDENCE`.
-- If retrieval is confident but deterministic choice matching fails, the backend asks local Ollama to choose from the visible options using only the retrieved fact.
+- If retrieval is confident but deterministic choice matching fails, the backend first evaluates options using **Laya System 1** (`LayaSurveySolver`, ~33ms) before falling back to local Ollama.
+- Laya outputs calibrated confidence and prevents text hallucination or malformed JSON.
 - LLM fallback choices are rejected when the chosen label is not supported by the retrieved fact.
 - Exact repeat questions are cached in memory while the backend process is running.
 - `Learn Visible` lets you manually answer a visible question once and save that answer into local memory for future runs.
