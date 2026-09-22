@@ -35,6 +35,26 @@ Allowed types used in this repo include:
 
 Avoid PR titles like `Update docs` or `arm docker fix`; they will become weak squash commit messages and may not drive semantic-release correctly.
 
+## Pre-Push Independent Review Workflow (Mandatory)
+
+Every pull request (PR) and every subsequent change pushed to a PR branch must undergo an independent review in a separate agent session (e.g. via `invoke_subagent` with an independent reviewer role) before pushing to GitHub (`origin`).
+
+The review workflow is strictly iterative:
+
+1. **Make Changes**: Implement code, tests, and documentation on a dedicated branch.
+2. **Launch Independent Review**: Spawn an independent reviewer subagent in a separate conversation session to review the git diff against `main` (or the target branch).
+   - The reviewer evaluates:
+     - Functional correctness, bug risks, and edge cases.
+     - Security and public repo safety (no credentials, tokens, private data, or runtime files).
+     - Test coverage and verification.
+     - Documentation updates (architecture, READMEs, etc.).
+     - PR title and commit messages adhering to conventional commit specifications.
+3. **Address Feedback**: The primary agent resolves all feedback, defects, and recommendations raised by the reviewer.
+4. **Re-Review**: Re-run an independent review to evaluate the latest diff.
+5. **Iterate Until Clean**: Repeat steps 3 and 4 until the independent review reports **zero issues**.
+6. **Push & Open/Update PR**: Only once the review passes cleanly with no outstanding issues may the branch be pushed to `origin` and the PR opened or updated.
+
+
 ## Public Repo Safety
 
 Never commit local secrets, OAuth tokens, Gmail credentials, runtime memory, private rules, logs, virtualenvs, or cache files.
