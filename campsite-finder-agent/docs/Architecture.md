@@ -11,4 +11,4 @@ The agent has three small layers:
 
 The browser layer is intentionally thin. Matching behavior is covered by unit tests without requiring Recreation.gov or Chrome, so selector and API drift can be fixed without disturbing the core search rules.
 
-The agent only discovers availability and alerts. It does not auto-book campsites or submit reservation actions.
+The scan commands discover availability and alert. The get-site helpers can submit reservation/cart actions, stopping before final payment confirmation. ReserveCalifornia release watches initialize the search to the day before the requested arrival for one night, then reload the full page before each availability check because the in-page refresh can retain stale release state. After each reload they restore the previous-day one-night search if needed. The configured interval is a delay between attempts, in addition to reload and setup time. They select the target site's actual arrival-date cell and set `#nights-select` to the requested stay before Book Now. Missing/disabled duration options stop the booking attempt; pre-cart arrival and nights validation remains required before Reserve Unit.

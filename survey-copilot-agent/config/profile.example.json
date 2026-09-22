@@ -1,0 +1,9 @@
+{
+  "facts": [
+    {
+      "key": "age",
+      "value": "42",
+      "text": "The example user is 42 years old."
+    }
+  ]
+}

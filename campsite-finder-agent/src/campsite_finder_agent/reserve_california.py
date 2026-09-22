@@ -162,7 +162,7 @@ def get_reserve_california_site(
         if park_url and not _same_reserve_california_park_url(page.url, park_url):
             page.goto(park_url, wait_until="domcontentloaded")
             _wait_for_reserve_california_page(page)
-        set_result = set_reserve_california_search_dates(page, start_date, nights)
+        set_result = set_reserve_california_search_dates(page, start_date - timedelta(days=1), 1)
 
         print(
             f"Armed ReserveCalifornia get-site for site {site} on {start_date.isoformat()}; "
@@ -176,6 +176,11 @@ def get_reserve_california_site(
         last_states: list[dict[str, str]] = []
         while datetime.now(timezone) <= window_end:
             attempts += 1
+            # The in-page refresh can retain stale release availability.
+            page.reload(wait_until="domcontentloaded")
+            set_reserve_california_search_dates(page, start_date - timedelta(days=1), 1)
+            if datetime.now(timezone) > window_end:
+                break
             result = page.evaluate(
                 """
                 async ({
@@ -426,6 +431,23 @@ def get_reserve_california_site(
                     selectable.scrollIntoView({ block: "center", inline: "center" });
                     await wait(25);
                     selectable.click();
+                    let durationReady = false;
+                    for (let index = 0; index < 30; index += 1) {
+                      const duration = document.querySelector("#nights-select");
+                      const option = duration && [...duration.options].find((item) => (
+                        item.value === String(nights) && !item.disabled
+                      ));
+                      if (duration && !duration.disabled && option) {
+                        setNativeValue(duration, String(nights));
+                        await wait(250);
+                        durationReady = document.querySelector("#nights-select")?.value === String(nights);
+                        if (durationReady) break;
+                      }
+                      await wait(100);
+                    }
+                    if (!durationReady) {
+                      return { action: "requested-nights-unavailable", states, bookNowClicked: false };
+                    }
                     if (!clickBookNow) {
                       return { action: "clicked-site-cell", states, bookNowClicked: false };
                     }
@@ -433,7 +455,7 @@ def get_reserve_california_site(
                       const button = document.querySelector("#checkout-button");
                       const disabled = !button || button.disabled || button.getAttribute("aria-disabled") === "true"
                         || button.hasAttribute("disabled");
-                      if (!disabled) {
+                      if (!disabled && document.querySelector("#nights-select")?.value === String(nights)) {
                         button.scrollIntoView({ block: "center", inline: "center" });
                         await wait(30);
                         button.click();
@@ -451,12 +473,7 @@ def get_reserve_california_site(
                     }
                     return { action: "clicked-site-cell-book-now-not-ready", states, bookNowClicked: false };
                   }
-                  const refresh = document.querySelector("button.refresh-btn.btn");
-                  if (!refresh) {
-                    return { action: "no-refresh-button", states, bookNowClicked: false };
-                  }
-                  refresh.click();
-                  return { action: "refreshed", states, bookNowClicked: false };
+                  return { action: "waiting-for-availability", states, bookNowClicked: false };
                 }
                 """,
                 {
@@ -477,6 +494,7 @@ def get_reserve_california_site(
             print(f"{datetime.now(timezone):%H:%M:%S} {action}: {_summarize_get_site_states(last_states)}")
             if action.startswith("clicked-site-cell") or action in {
                 "details-filled",
+                "requested-nights-unavailable",
                 "details-validation-failed",
                 "reserve-unit-clicked",
                 "reserve-unit-and-go-to-checkout-clicked",
@@ -694,7 +712,7 @@ def set_reserve_california_search_dates(page, start_date: date, nights: int) -> 
             if (!pickerButton) return { ok: false, startFound: false, endFound: false, reason: "picker button not found" };
             pickerButton.scrollIntoView({ block: "center", inline: "center" });
             await wait(50);
-            pickerButton.click();
+            if (!document.querySelector(".react-datepicker__month")) pickerButton.click();
             for (let index = 0; index < 50; index += 1) {
               if (document.querySelector(".react-datepicker__month")) break;
               await wait(100);

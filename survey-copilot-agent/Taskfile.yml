@@ -1,0 +1,73 @@
+version: "3"
+
+vars:
+  HOST: '{{default "127.0.0.1" .HOST}}'
+  PORT: '{{default "8765" .PORT}}'
+  BASE_URL: "http://{{.HOST}}:{{.PORT}}"
+  KEY: ""
+
+tasks:
+  sync:
+    desc: Install dependencies
+    cmds:
+      - uv sync --extra dev
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run --extra dev pytest
+
+  run:
+    desc: Run the local backend
+    cmds:
+      - uv run survey-copilot-agent
+
+  serve:
+    desc: Alias for run
+    cmds:
+      - task run
+
+  profile:load:
+    desc: Embed and load config/profile.local.json into local memory
+    cmds:
+      - curl -s -X POST {{.BASE_URL}}/profile/load
+
+  health:
+    desc: Check backend health
+    cmds:
+      - curl -s {{.BASE_URL}}/health
+
+  answer:age:
+    desc: Ask the backend an exact-age text question
+    cmds:
+      - >-
+        curl -s -X POST {{.BASE_URL}}/answer
+        -H 'Content-Type: application/json'
+        -d '{"question_text":"What is your exact age?","input_type":"text","choices":[]}'
+
+  answer:age-range:
+    desc: Ask the backend an age-range radio question
+    cmds:
+      - >-
+        curl -s -X POST {{.BASE_URL}}/answer
+        -H 'Content-Type: application/json'
+        -d '{"question_text":"What age range do you fall into?","input_type":"radio","choices":[{"id":"18-24","label":"18-24","value":"18-24"},{"id":"25-34","label":"25-34","value":"25-34"},{"id":"35-44","label":"35-44","value":"35-44"}]}'
+
+  learn:sample:
+    desc: Teach the backend one sample answer
+    cmds:
+      - >-
+        curl -s -X POST {{.BASE_URL}}/learn
+        -H 'Content-Type: application/json'
+        -d '{"question_text":"Which mobile provider do you use?","input_type":"radio","choices":[{"id":"att","label":"AT&T","value":"AT&T"}],"answer":"AT&T","choice_ids":["att"]}'
+
+  learned:list:
+    desc: List answers learned through the extension/backend
+    cmds:
+      - curl -s {{.BASE_URL}}/learned
+
+  learned:delete:
+    desc: Delete one learned answer by KEY
+    cmds:
+      - test -n "{{.KEY}}"
+      - curl -s -X DELETE {{.BASE_URL}}/learned/{{.KEY}}

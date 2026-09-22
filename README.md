@@ -12,7 +12,7 @@ A public, practical collection of local-first agents I use to automate parts of 
 | [Personal Finance Agent](personal-finance-agent/README.md) | MVP | Imports bank CSVs, categorizes spending, exports review files, and generates monthly reports. |
 | AWS Agent | Not started | Planned cloud/account operations assistant. |
 | Job/Consulting Search Agent | Not started | Planned lead tracking and opportunity search. |
-| Paid Survey/Expert Networks Agent | Not started | Planned opportunity screening. |
+| [Survey Copilot Agent](survey-copilot-agent/README.md) | Scaffold | Local Chrome extension and Ollama-backed backend for user-triggered survey autofill. |
 | Travel Planner | Not started | Planned itinerary and logistics assistant. |
 | Learning Assistant | Not started | Planned study/research support. |
 | Idea Tracker | Not started | Planned capture and follow-up agent. |
