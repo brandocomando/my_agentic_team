@@ -4,10 +4,36 @@ import logging
 import sqlite3
 from typing import Any
 
-from personal_finance_agent.categories import CATEGORIES
+from personal_finance_agent.categories import CATEGORIES, EXCLUDED_SOURCE_CATEGORIES
 from personal_finance_agent.models import Categorization
 
 logger = logging.getLogger(__name__)
+
+_SHARED_ROUTER: Any | None = None
+_SHARED_ROUTER_INITIALIZED: bool = False
+
+
+def get_shared_router() -> Any | None:
+    """Return a shared preloaded Router instance across categorizer calls."""
+    global _SHARED_ROUTER, _SHARED_ROUTER_INITIALIZED
+    if not _SHARED_ROUTER_INITIALIZED:
+        try:
+            from laya import Router
+
+            _SHARED_ROUTER = Router(preload=True)
+        except ImportError:
+            logger.info("laya package not installed; using heuristic fallback categorizer.")
+            _SHARED_ROUTER = None
+        _SHARED_ROUTER_INITIALIZED = True
+    return _SHARED_ROUTER
+
+
+def reset_shared_router() -> None:
+    """Reset the shared Router instance (useful for testing)."""
+    global _SHARED_ROUTER, _SHARED_ROUTER_INITIALIZED
+    _SHARED_ROUTER = None
+    _SHARED_ROUTER_INITIALIZED = False
+
 
 FINANCE_CATEGORY_CRITERIA: dict[str, str] = {
     "Housing": "rent, mortgage, home insurance, property taxes, HOA dues",
@@ -43,28 +69,25 @@ class LayaTransactionCategorizer:
 
     def _ensure_router(self) -> Any:
         if self._router is None and not self._initialized:
-            try:
-                from laya import Router
-
-                self._router = Router(preload=True)
-                self._initialized = True
-            except ImportError:
-                logger.info("laya package not installed; using heuristic fallback categorizer.")
-                self._router = None
-                self._initialized = True
+            self._router = get_shared_router()
+            self._initialized = True
         return self._router
 
     def build_state(self, tx: sqlite3.Row) -> dict[str, Any]:
+        merchant = str(tx["normalized_merchant"] or "")
+        description = str(tx["raw_description"] or "")
+        amount = str(tx["amount"] or "0.0")
+        source_category = str(tx["source_category"] or "")
         return {
-            "merchant": str(tx["normalized_merchant"]),
-            "raw_description": str(tx["raw_description"]),
-            "amount": str(tx["amount"]),
-            "source_category": str(tx["source_category"] or ""),
+            "merchant": merchant,
+            "raw_description": description,
+            "amount": amount,
+            "source_category": source_category,
             "context": (
-                f"Merchant: {tx['normalized_merchant']}. "
-                f"Description: {tx['raw_description']}. "
-                f"Amount: ${tx['amount']}. "
-                f"Bank Category: {tx['source_category'] or 'None'}"
+                f"Merchant: {merchant}. "
+                f"Description: {description}. "
+                f"Amount: ${amount}. "
+                f"Bank Category: {source_category or 'None'}"
             ),
         }
 
@@ -86,7 +109,10 @@ class LayaTransactionCategorizer:
                         "instructions": "Is this transaction ambiguous or does it require manual human review?",
                     },
                 }
-                res = router.predict(state, questions)
+                predict_kwargs: dict[str, Any] = {}
+                if self.model_name:
+                    predict_kwargs["model"] = self.model_name
+                res = router.predict(state, questions, **predict_kwargs)
                 return self.parse_prediction(res, tx, cutoff)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Laya transaction categorizer failed: %s; using heuristic fallback.", exc)
@@ -117,6 +143,7 @@ class LayaTransactionCategorizer:
             confidence=round(confidence, 4),
             reason=f"Laya System 1 decision via {routing_model} (confidence={confidence:.2f})",
             needs_review=needs_review,
+            exclude_from_spending=chosen_cat in EXCLUDED_SOURCE_CATEGORIES,
             source="laya",
         )
 
@@ -139,6 +166,7 @@ class LayaTransactionCategorizer:
                     confidence=conf,
                     reason=f"Laya System 1 fallback rule for {category}",
                     needs_review=conf < cutoff,
+                    exclude_from_spending=category in EXCLUDED_SOURCE_CATEGORIES,
                     source="laya",
                 )
 

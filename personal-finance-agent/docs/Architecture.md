@@ -36,8 +36,10 @@ Normalizes noisy descriptions such as `AMZN Mktp US*X92KS02` to stable merchant 
 Applies learned human rules, deterministic YAML rules, source CSV categories, **Laya System 1 decision engine**, and then optional Ollama fallback. For broad department-store merchants such as Amazon and Target, itemized matches still win first, but otherwise mapped source CSV categories are preferred over the generic low-confidence department-store rule.
 
 When deterministic rules do not match:
-1. **Laya System 1 (~33ms)**: Evaluates `choice` (category) and `noul` (needs_review) against calibrated probabilities. When confidence meets `LAYA_CONFIDENCE_THRESHOLD` (default: 0.80), the categorization completes immediately without external LLM latency.
-2. **Ollama System 2**: Used only when Laya confidence is below threshold or Laya flags ambiguous items for review. It validates LLM output against allowed categories and falls back to `Needs Review` when the response is invalid or Ollama is unavailable.
+1. **Laya System 1 (~33ms)**: Evaluates `choice` (category) and `noul` (needs_review) against calibrated probabilities. When confidence meets `LAYA_CONFIDENCE_THRESHOLD` (default: 0.80), the categorization completes immediately without external LLM latency. Can be skipped via `--no-laya` or `USE_LAYA=false`.
+2. **Ollama System 2**: Used only when Laya confidence is below threshold, Laya flags ambiguous items for review, or Laya is disabled. It validates LLM output against allowed categories and falls back to `Needs Review` when the response is invalid or Ollama is unavailable.
+
+Running with `--no-llm` bypasses both Laya System 1 and Ollama System 2 for a strictly rules-only deterministic run.
 
 ### Human Review
 

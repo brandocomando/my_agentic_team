@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sqlite3
 from functools import cache
 from typing import Any, Literal, TypedDict
@@ -12,6 +13,8 @@ from personal_finance_agent.llm.ollama_client import call_ollama
 from personal_finance_agent.models import Categorization
 from personal_finance_agent.storage import find_merchant_rule
 from personal_finance_agent.web_search import WebSearchResult, search_web
+
+logger = logging.getLogger(__name__)
 
 
 LOW_CONFIDENCE_MERCHANTS = {"AMAZON", "TARGET", "COSTCO", "WALMART"}
@@ -30,6 +33,7 @@ class CategorizationState(TypedDict, total=False):
     laya_model: str
     laya_threshold: float
     laya_checked: bool
+    laya_error: str
     result: Categorization
     llm_result: dict[str, Any]
     search_query: str
@@ -48,10 +52,11 @@ def categorize_transaction(
     model: str = "llama3.1:8b",
     base_url: str = "http://localhost:11434",
     web_search_enabled: bool = False,
-    use_laya: bool = True,
+    use_laya: bool | None = None,
     laya_model: str = "convaiinnovations/laya",
     laya_threshold: float = 0.80,
 ) -> Categorization:
+    effective_use_laya = use_llm if use_laya is None else use_laya
     state = _categorization_graph().invoke(
         {
             "conn": conn,
@@ -62,7 +67,7 @@ def categorize_transaction(
             "model": model,
             "base_url": base_url,
             "web_search_enabled": web_search_enabled,
-            "use_laya": use_laya,
+            "use_laya": effective_use_laya,
             "laya_model": laya_model,
             "laya_threshold": laya_threshold,
         }
@@ -271,9 +276,12 @@ def _laya_node(state: CategorizationState) -> CategorizationState:
         )
         result = categorizer.categorize(state["tx"], threshold=float(state.get("laya_threshold", 0.80)))
         if result and not result.needs_review:
-            output["result"] = result
+            result = _enforce_amount_sanity(state["tx"], result)
+            if not result.needs_review:
+                output["result"] = result
     except Exception as exc:  # noqa: BLE001
-        output["error"] = f"Laya categorization failed: {exc}"
+        logger.warning("Laya categorization failed: %s", exc)
+        output["laya_error"] = f"Laya categorization failed: {exc}"
     return output
 
 
