@@ -103,13 +103,37 @@ def test_laya_classifier_router_initialization_error_handling() -> None:
         snippet="Invoice attached.",
     )
 
-    # Should gracefully catch error and fall back to heuristic emulator
-    result = classifier._heuristic_laya_fallback(message)
+    # Must invoke classify() to verify that initialization failures are caught
+    result = classifier.classify(message)
     assert result.category == "money"
     assert result.importance == "important"
     assert result.should_highlight is True
     assert result.should_archive is False
     assert result.confidence == 0.55
+
+
+def test_laya_classifier_router_constructor_exception(monkeypatch) -> None:
+    import sys
+
+    mock_router_class = MagicMock(side_effect=RuntimeError("Download failed: 504 Gateway Timeout"))
+    fake_laya = MagicMock()
+    fake_laya.Router = mock_router_class
+    monkeypatch.setitem(sys.modules, "laya", fake_laya)
+
+    classifier = LayaEmailClassifier()
+    message = EmailMessage(
+        gmail_message_id="msg-err2",
+        thread_id="th-err2",
+        subject="Invoice #1000",
+        from_email="billing@vendor.com",
+        snippet="Invoice attached.",
+    )
+
+    result = classifier.classify(message)
+    assert result.category == "money"
+    assert result.confidence == 0.55
+    assert classifier._router is None
+    assert classifier._initialized is True
 
 
 def test_laya_classifier_model_and_subfolder_configuration(monkeypatch) -> None:
@@ -122,14 +146,28 @@ def test_laya_classifier_model_and_subfolder_configuration(monkeypatch) -> None:
     fake_laya.Router = mock_router_class
     monkeypatch.setitem(sys.modules, "laya", fake_laya)
 
-    classifier = LayaEmailClassifier(
+    # 1. Standalone checkpoint repo: subfolder should not be redundantly appended
+    classifier_standalone = LayaEmailClassifier(
         model_name="convaiinnovations/laya-multilingual",
         subfolder="multilingual",
     )
-    router = classifier._ensure_router()
-    assert router is mock_router_instance
-    mock_router_class.assert_called_once_with(
-        models={"multilingual": ("convaiinnovations/laya-multilingual", "multilingual")},
+    router_standalone = classifier_standalone._ensure_router()
+    assert router_standalone is mock_router_instance
+    mock_router_class.assert_called_with(
+        models={"multilingual": "convaiinnovations/laya-multilingual"},
+        preload=True,
+    )
+
+    # 2. Bundled checkpoint repo: subfolder is correctly passed
+    mock_router_class.reset_mock()
+    classifier_bundle = LayaEmailClassifier(
+        model_name="convaiinnovations/laya",
+        subfolder="multilingual",
+    )
+    router_bundle = classifier_bundle._ensure_router()
+    assert router_bundle is mock_router_instance
+    mock_router_class.assert_called_with(
+        models={"multilingual": ("convaiinnovations/laya", "multilingual")},
         preload=True,
     )
 

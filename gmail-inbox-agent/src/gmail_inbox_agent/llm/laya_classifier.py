@@ -81,7 +81,18 @@ class LayaEmailClassifier:
                         slot = self.subfolder
                     elif any(k in self.model_name for k in ("multi", "typed")):
                         slot = "multilingual" if "multi" in self.model_name else "typed-decisions"
-                    models_override = {slot: (self.model_name, self.subfolder)}
+
+                    # If model_name is already a standalone checkpoint repo corresponding to the slot,
+                    # its weights reside at the repo root (no subfolder).
+                    sub = self.subfolder
+                    if sub and (
+                        self.model_name.rstrip("/").endswith(f"-{sub}")
+                        or self.model_name.rstrip("/").endswith(f"/{sub}")
+                        or (slot in self.model_name and self.model_name != "convaiinnovations/laya")
+                    ):
+                        sub = None
+
+                    models_override = {slot: (self.model_name, sub) if sub else self.model_name}
                     self._target_model = slot
 
                 self._router = Router(models=models_override, preload=True)
@@ -107,7 +118,12 @@ class LayaEmailClassifier:
         }
 
     def classify(self, message: EmailMessage) -> EmailClassification:
-        router = self._ensure_router()
+        try:
+            router = self._ensure_router()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to obtain Laya router: %s; falling back to heuristic.", exc)
+            router = None
+
         state = self.build_state(message)
 
         if router is not None:
