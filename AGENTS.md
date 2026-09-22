@@ -41,7 +41,7 @@ Every pull request (PR) and every subsequent change pushed to a PR branch must u
 
 The review workflow is strictly iterative:
 
-1. **Make Changes**: Implement code, tests, and documentation on a dedicated branch.
+1. **Make Changes**: Implement code, tests, and documentation on a dedicated branch or isolated git worktree.
 2. **Launch Independent Review**: Spawn an independent reviewer subagent in a separate conversation session to review the git diff against `main` (or the target branch).
    - The reviewer evaluates:
      - Functional correctness, bug risks, and edge cases.

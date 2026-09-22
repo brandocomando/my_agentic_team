@@ -18,7 +18,7 @@ This is a public repository, but outside contributors should not expect direct p
 3. Push your branch to your fork.
 4. Open a pull request from your fork back to this repository.
 
-For maintainers with direct access, still use a branch and pull request instead of pushing directly to `main`. This keeps CI, release automation, and review history visible.
+For maintainers with direct access, still use a feature branch or dedicated worktree and pull request instead of pushing directly to `main`. This keeps CI, release automation, and review history visible.
 
 For AI agents contributing to this repository, every PR and every update to an existing PR must complete an independent pre-push review loop (in a clean, separate agent session) before pushing to `origin`—see [AGENTS.md](AGENTS.md) for details.
 
