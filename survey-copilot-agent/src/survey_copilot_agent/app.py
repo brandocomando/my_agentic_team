@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .answering import answer_from_facts
 from .cache import AnswerCache, answer_cache_key
 from .config import Settings, get_settings
+from .laya_solver import LayaSurveySolver
 from .learning import fact_from_learn_request
 from .memory import MemoryStore, load_profile
 from .models import AnswerResponse, Fact, LearnRequest, QuestionRequest
@@ -25,6 +26,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.ollama_chat_model,
         settings.ollama_embed_model,
     )
+    laya_solver = LayaSurveySolver(
+        model_name=settings.laya_model_name,
+        min_confidence=settings.laya_min_confidence,
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -32,6 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.store = store
         app.state.answer_cache = answer_cache
         app.state.ollama = ollama
+        app.state.laya_solver = laya_solver
         app.state.settings = settings
         yield
 
@@ -81,7 +87,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             and answer.reason.startswith("no matching choice found")
             and request.input_type in {"radio", "select", "checkbox"}
         ):
-            answer = await ollama.choose_answer(request, matches[0][0], answer.confidence)
+            if settings.use_laya:
+                laya_answer = laya_solver.choose_answer(request, matches[0][0], answer.confidence)
+                if laya_answer is not None:
+                    answer = laya_answer
+            if answer.answer is None:
+                answer = await ollama.choose_answer(request, matches[0][0], answer.confidence)
         log_answer(request, answer, source="computed")
         answer_cache.set(cache_key, answer)
         return answer

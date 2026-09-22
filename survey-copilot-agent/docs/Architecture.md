@@ -5,7 +5,8 @@
 - Chrome extension: a Manifest V3 content script injected only on configured survey dashboard domains.
 - Backend: FastAPI service on `127.0.0.1:8765`.
 - Memory: SQLite database storing facts and Ollama embedding vectors.
-- Ollama: local embedding provider plus fallback choice reasoning when deterministic matching cannot map a confident fact to visible options.
+- Laya Decision Engine: sub-35ms System 1 decision engine using typed `choice` and `noul` primitives to resolve multiple-choice and checkbox survey questions before falling back to Ollama.
+- Ollama: local embedding provider plus System 2 fallback choice reasoning when deterministic and Laya matching cannot map a confident fact to visible options.
 - Answer cache: in-process cache keyed by question, choices, and the top retrieved fact.
 - Learning endpoint: stores user-confirmed visible answers as embedded local facts.
 
@@ -17,11 +18,13 @@
 4. The backend embeds the question with Ollama.
 5. The backend retrieves the nearest local facts from SQLite.
 6. Deterministic answer logic maps facts to text inputs or choices. For example, exact age can be converted into an age-range radio answer.
-7. If retrieval is confident but deterministic choice matching fails, the backend checks the answer cache and then asks local Ollama to choose from the provided choices using only the retrieved fact.
-8. If no fact clears the confidence threshold, or Ollama chooses a label unsupported by the retrieved fact, the backend returns `answer: null`.
-9. The content script fills only non-null answers.
-10. If the answer was filled, the content script clicks a visible `Continue`, `Next`, `Submit`, or `Done` control. On UserTesting v2 screeners, it also checks the `.screener-question__button-container` footer for the question's `Next` button.
-11. It waits for the page question signature to change, then repeats until no question is found, the backend returns `null`, no next button is found, the page does not change, or the max step count is reached.
+7. If retrieval is confident but deterministic choice matching fails, the backend first queries **Laya System 1** (`LayaSurveySolver`, ~33ms) over the choices and retrieved fact.
+8. If Laya provides an answer meeting `LAYA_MIN_CONFIDENCE`, it is returned immediately with calibrated confidence.
+9. If Laya cannot confidently resolve the choices, the backend falls back to local Ollama (System 2) to choose from the provided options.
+10. If no fact clears the confidence threshold, or Ollama chooses a label unsupported by the retrieved fact, the backend returns `answer: null`.
+11. The content script fills only non-null answers.
+12. If the answer was filled, the content script clicks a visible `Continue`, `Next`, `Submit`, or `Done` control. On UserTesting v2 screeners, it also checks the `.screener-question__button-container` footer for the question's `Next` button.
+13. It waits for the page question signature to change, then repeats until no question is found, the backend returns `null`, no next button is found, the page does not change, or the max step count is reached.
 
 ## Qualification Check Flow
 
