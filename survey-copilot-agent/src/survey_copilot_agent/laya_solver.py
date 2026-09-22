@@ -101,18 +101,18 @@ class LayaSurveySolver:
             return None
 
         router = self._ensure_router()
-        if router is not None:
-            try:
-                if request.input_type in {"radio", "select"}:
-                    return self._solve_choice(router, request, fact, retrieval_confidence)
-                if request.input_type == "checkbox":
-                    return self._solve_checkbox(router, request, fact, retrieval_confidence)
-                return None
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Laya survey solver encountered an error: %s", exc)
-                return None
+        if router is None:
+            return None
 
-        return self._heuristic_laya_solver(request, fact, retrieval_confidence)
+        try:
+            if request.input_type in {"radio", "select"}:
+                return self._solve_choice(router, request, fact, retrieval_confidence)
+            if request.input_type == "checkbox":
+                return self._solve_checkbox(router, request, fact, retrieval_confidence)
+            return None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Laya survey solver encountered an error: %s", exc)
+            return None
 
     def _solve_choice(
         self,
@@ -209,45 +209,5 @@ class LayaSurveySolver:
             choice_id=selected_choices[0].id if selected_choices else None,
             choice_ids=[c.id for c in selected_choices if c.id],
             confidence=final_conf,
-            reason=f"laya:checkbox matched fact:{fact.key}",
-        )
-
-    def _heuristic_laya_solver(
-        self,
-        request: QuestionRequest,
-        fact: Fact,
-        retrieval_confidence: float,
-    ) -> AnswerResponse | None:
-        if retrieval_confidence < self.min_confidence:
-            return None
-
-        if request.input_type not in {"radio", "select", "checkbox"}:
-            return None
-
-        fact_lower = f"{fact.value} {fact.text}".lower()
-        matched: list[Choice] = []
-
-        for choice in request.choices:
-            c_lower = choice.label.lower()
-            if c_lower in fact_lower or any(word in fact_lower for word in c_lower.split() if len(word) > 3):
-                matched.append(choice)
-
-        if not matched:
-            return None
-
-        if request.input_type in {"radio", "select"}:
-            c = matched[0]
-            return AnswerResponse(
-                answer=c.label,
-                choice_id=c.id,
-                confidence=round(retrieval_confidence, 4),
-                reason=f"laya:choice matched fact:{fact.key}",
-            )
-
-        return AnswerResponse(
-            answer=", ".join(c.label for c in matched),
-            choice_id=matched[0].id if matched else None,
-            choice_ids=[c.id for c in matched if c.id],
-            confidence=round(retrieval_confidence, 4),
             reason=f"laya:checkbox matched fact:{fact.key}",
         )

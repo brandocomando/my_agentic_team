@@ -206,7 +206,7 @@ def test_laya_solver_model_name_mapping() -> None:
     assert mock_router.predict.call_args[1]["model"] == "typed-decisions"
 
 
-def test_laya_solver_heuristic_fallback() -> None:
+def test_laya_solver_none_router_returns_none() -> None:
     solver = LayaSurveySolver(router_instance=None)
     solver._ensure_router = lambda: None
 
@@ -221,24 +221,6 @@ def test_laya_solver_heuristic_fallback() -> None:
     fact = Fact(key="device", value="MacBook", text="I use a MacBook Pro laptop.")
 
     result = solver.choose_answer(request, fact, retrieval_confidence=0.88)
-    assert result is not None
-    assert result.answer == "MacBook Pro"
-    assert result.choice_id == "d1"
-
-
-def test_laya_solver_heuristic_fallback_low_confidence() -> None:
-    solver = LayaSurveySolver(router_instance=None, min_confidence=0.70)
-    solver._ensure_router = lambda: None
-
-    request = QuestionRequest(
-        question_text="What device do you use?",
-        input_type="radio",
-        choices=[Choice(id="d1", label="MacBook Pro")],
-    )
-    fact = Fact(key="device", value="MacBook", text="I use a MacBook Pro laptop.")
-
-    # 0.60 is below 0.70 min_confidence
-    result = solver.choose_answer(request, fact, retrieval_confidence=0.60)
     assert result is None
 
 
