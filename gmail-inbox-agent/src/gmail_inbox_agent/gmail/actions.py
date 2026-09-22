@@ -3,12 +3,10 @@ from __future__ import annotations
 from gmail_inbox_agent.labels import REVIEWED_LABEL, normalize_labels
 from gmail_inbox_agent.models import ProcessedEmail
 
-
 MIN_ARCHIVE_CONFIDENCE = 0.7
 
 
 def planned_actions(processed: ProcessedEmail) -> list[str]:
-    classification = processed.classification
     actions = [f"apply labels to thread: {', '.join(labels_for(processed))}"]
     if should_archive(processed):
         actions.append("archive thread: remove INBOX label")
@@ -32,4 +30,6 @@ def labels_for(processed: ProcessedEmail) -> list[str]:
 
 def should_archive(processed: ProcessedEmail) -> bool:
     classification = processed.classification
+    if classification.should_highlight or classification.importance == "important":
+        return False
     return classification.should_archive and classification.confidence >= MIN_ARCHIVE_CONFIDENCE

@@ -12,10 +12,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
-    llm_provider: Literal["openai", "ollama"] = Field(default="openai", alias="LLM_PROVIDER")
+    llm_provider: Literal["openai", "ollama", "laya", "hybrid"] = Field(default="hybrid", alias="LLM_PROVIDER")
     openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
     ollama_model: str = Field(default="llama3.1:8b", alias="OLLAMA_MODEL")
+    laya_model_name: str = Field(default="convaiinnovations/laya", alias="LAYA_MODEL_NAME")
+    laya_subfolder: str | None = Field(default=None, alias="LAYA_SUBFOLDER")
+    laya_confidence_threshold: float = Field(default=0.85, alias="LAYA_CONFIDENCE_THRESHOLD")
     gmail_credentials_path: Path = Field(
         default=Path("./data/gmail_credentials.json"), alias="GMAIL_CREDENTIALS_PATH"
     )

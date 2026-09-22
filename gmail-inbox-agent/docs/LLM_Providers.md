@@ -1,15 +1,30 @@
 # LLM Providers
 
-The agent supports configurable LLM providers for classification:
+The agent supports configurable classification providers:
 
-- OpenAI
-- Ollama
+- `hybrid` (Recommended): Fast System 1 triage with Laya (~33ms), falling back to OpenAI/Ollama (System 2) only when confidence is low.
+- `laya`: Pure System 1 non-autoregressive decision engine with calibrated probabilities.
+- `openai`: Generative LLM via OpenAI Responses API.
+- `ollama`: Local generative LLM via Ollama API.
 
-Both providers must return JSON that validates as `EmailClassification`. The agent normalizes labels before applying Gmail actions.
+Both providers return decisions that validate as `EmailClassification`. The agent normalizes labels before applying Gmail actions.
 
 ## Configuration
 
 Set the provider in `.env`:
+
+```text
+LLM_PROVIDER=hybrid
+LAYA_CONFIDENCE_THRESHOLD=0.85
+```
+
+or:
+
+```text
+LLM_PROVIDER=laya
+```
+
+or:
 
 ```text
 LLM_PROVIDER=openai
@@ -21,9 +36,26 @@ or:
 LLM_PROVIDER=ollama
 ```
 
+## Laya (System 1 Decision Engine)
+
+[Laya](https://laya.convaiinnovations.com/) is an open-weight, non-autoregressive decision model running in ~33ms with calibrated probabilities across 100+ languages.
+
+```text
+LLM_PROVIDER=laya
+LAYA_MODEL_NAME=convaiinnovations/laya
+LAYA_CONFIDENCE_THRESHOLD=0.85
+```
+
+Install:
+```bash
+pip install laya>=0.3.3
+```
+
+In `hybrid` mode, Laya evaluates incoming emails in ~33ms. If confidence meets or exceeds `LAYA_CONFIDENCE_THRESHOLD` (default: 0.85), the decision is applied immediately with zero token costs and sub-50ms latency. If confidence is below threshold, it falls back to OpenAI or Ollama for deep reasoning.
+
 ## OpenAI
 
-OpenAI is the default provider.
+OpenAI provides high-quality generative classification with structured output:
 
 ```text
 LLM_PROVIDER=openai
