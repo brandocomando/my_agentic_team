@@ -1,11 +1,30 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from .models import AnswerResponse, Choice, Fact, QuestionRequest
 
 logger = logging.getLogger(__name__)
+
+# Map known model identifiers/aliases to the canonical router keys
+KNOWN_MODELS: dict[str, str] = {
+    "convaiinnovations/laya": "english",
+    "laya": "english",
+    "english": "english",
+    "en": "english",
+    "default": "english",
+    "convaiinnovations/laya-multilingual": "multilingual",
+    "multilingual": "multilingual",
+    "multi": "multilingual",
+    "ml": "multilingual",
+    "convaiinnovations/laya-typed-decisions": "typed-decisions",
+    "typed-decisions": "typed-decisions",
+    "typed_decisions": "typed-decisions",
+    "typed": "typed-decisions",
+    "decisions": "typed-decisions",
+}
 
 
 class LayaSurveySolver:
@@ -21,18 +40,37 @@ class LayaSurveySolver:
         self.min_confidence = min_confidence
         self._router = router_instance
         self._initialized = router_instance is not None
+        self._lock = threading.Lock()
+
+        # Resolve model name to router model key or custom models dict
+        normalized = model_name.strip().lower()
+        if normalized in KNOWN_MODELS:
+            self._model_key = KNOWN_MODELS[normalized]
+            self._custom_models: dict[str, str] | None = None
+        else:
+            self._model_key = "english"
+            self._custom_models = {"english": model_name}
+
+    def warmup(self) -> None:
+        """Preload the router model into memory ahead of time."""
+        self._ensure_router()
 
     def _ensure_router(self) -> Any:
         if self._router is None and not self._initialized:
-            try:
-                from laya import Router
+            with self._lock:
+                if self._router is None and not self._initialized:
+                    try:
+                        from laya import Router
 
-                self._router = Router(preload=True)
-                self._initialized = True
-            except ImportError:
-                logger.info("laya package not installed; using fallback survey solver.")
-                self._router = None
-                self._initialized = True
+                        if self._custom_models:
+                            self._router = Router(models=self._custom_models, preload=True)
+                        else:
+                            self._router = Router(preload=True)
+                        self._initialized = True
+                    except ImportError:
+                        logger.info("laya package not installed; using fallback survey solver.")
+                        self._router = None
+                        self._initialized = True
         return self._router
 
     def build_state(self, request: QuestionRequest, fact: Fact) -> dict[str, Any]:
@@ -50,11 +88,10 @@ class LayaSurveySolver:
         fact: Fact,
         retrieval_confidence: float,
     ) -> AnswerResponse | None:
-        if not request.choices:
+        if request.input_type not in {"radio", "select", "checkbox"}:
             return None
 
-        # Laya choice questions support up to 20 options efficiently
-        if len(request.choices) > 20:
+        if not request.choices or len(request.choices) > 20:
             return None
 
         router = self._ensure_router()
@@ -64,8 +101,10 @@ class LayaSurveySolver:
                     return self._solve_choice(router, request, fact, retrieval_confidence)
                 if request.input_type == "checkbox":
                     return self._solve_checkbox(router, request, fact, retrieval_confidence)
+                return None
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Laya survey solver encountered an error: %s", exc)
+                return None
 
         return self._heuristic_laya_solver(request, fact, retrieval_confidence)
 
@@ -93,11 +132,11 @@ class LayaSurveySolver:
             }
         }
 
-        res = router.predict(state, questions)
+        res = router.predict(state, questions, model=self._model_key)
         answers = res.get("answers", {})
         choice_data = answers.get("selected_option", {})
         chosen_key = choice_data.get("choice")
-        model_conf = float(choice_data.get("confidence", 0.85))
+        model_conf = float(choice_data.get("confidence", 0.0))
 
         if not chosen_key:
             return None
@@ -141,23 +180,29 @@ class LayaSurveySolver:
                 ),
             }
 
-        res = router.predict(state, questions)
+        res = router.predict(state, questions, model=self._model_key)
         answers = res.get("answers", {})
 
         selected_choices: list[Choice] = []
+        selected_probs: list[float] = []
         for idx, choice in enumerate(request.choices):
             prob = float(answers.get(f"opt_{idx}", {}).get("noul", 0.0))
-            if prob >= 0.50:
+            if prob >= self.min_confidence:
                 selected_choices.append(choice)
+                selected_probs.append(prob)
 
         if not selected_choices:
+            return None
+
+        final_conf = round(min(retrieval_confidence, min(selected_probs)), 4)
+        if final_conf < self.min_confidence:
             return None
 
         return AnswerResponse(
             answer=", ".join(c.label for c in selected_choices),
             choice_id=selected_choices[0].id if selected_choices else None,
             choice_ids=[c.id for c in selected_choices if c.id],
-            confidence=round(retrieval_confidence, 4),
+            confidence=final_conf,
             reason=f"laya:checkbox matched fact:{fact.key}",
         )
 
@@ -167,6 +212,12 @@ class LayaSurveySolver:
         fact: Fact,
         retrieval_confidence: float,
     ) -> AnswerResponse | None:
+        if retrieval_confidence < self.min_confidence:
+            return None
+
+        if request.input_type not in {"radio", "select", "checkbox"}:
+            return None
+
         fact_lower = f"{fact.value} {fact.text}".lower()
         matched: list[Choice] = []
 

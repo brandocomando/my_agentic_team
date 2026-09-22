@@ -116,3 +116,224 @@ def test_log_learned_answer_uses_info_level(caplog) -> None:
     assert "learned answer key='learned_provider_abc123'" in caplog.text
     assert "answer='Spectrum'" in caplog.text
     assert "fact_text=" in caplog.text
+
+
+def test_answer_endpoint_laya_success(tmp_path) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = MagicMock()
+    mock_ollama.embed = AsyncMock(return_value=[1.0, 0.0])
+    mock_ollama.choose_answer = AsyncMock()
+
+    mock_laya = MagicMock()
+    mock_laya.choose_answer.return_value = AnswerResponse(
+        answer="Employed full-time",
+        choice_id="opt_2",
+        confidence=0.90,
+        reason="laya:choice matched fact:job",
+    )
+
+    settings = Settings(db_path=tmp_path / "memory.sqlite", use_laya=True)
+    app = create_app(settings, ollama=mock_ollama, laya_solver=mock_laya)
+
+    with TestClient(app) as client:
+        client.app.state.store.upsert_fact(
+            Fact(key="job", value="Software Engineer", text="I work full-time.", source="profile"),
+            [1.0, 0.0],
+        )
+
+        response = client.post(
+            "/answer",
+            json={
+                "question_text": "What is your employment status?",
+                "input_type": "radio",
+                "choices": [
+                    {"id": "opt_1", "label": "Student"},
+                    {"id": "opt_2", "label": "Employed full-time"},
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "Employed full-time"
+    assert data["choice_id"] == "opt_2"
+    assert data["confidence"] == 0.90
+    assert "laya:choice" in data["reason"]
+    mock_ollama.choose_answer.assert_not_called()
+
+
+def test_answer_endpoint_laya_none_falls_back_to_ollama(tmp_path) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = MagicMock()
+    mock_ollama.embed = AsyncMock(return_value=[1.0, 0.0])
+    mock_ollama.choose_answer = AsyncMock(
+        return_value=AnswerResponse(
+            answer="Employed full-time",
+            choice_id="opt_2",
+            confidence=0.88,
+            reason="ollama:reasoning matched fact:job",
+        )
+    )
+
+    mock_laya = MagicMock()
+    mock_laya.choose_answer.return_value = None  # Laya cannot resolve
+
+    settings = Settings(db_path=tmp_path / "memory.sqlite", use_laya=True)
+    app = create_app(settings, ollama=mock_ollama, laya_solver=mock_laya)
+
+    with TestClient(app) as client:
+        client.app.state.store.upsert_fact(
+            Fact(key="job", value="Software Engineer", text="I work full-time.", source="profile"),
+            [1.0, 0.0],
+        )
+
+        response = client.post(
+            "/answer",
+            json={
+                "question_text": "What is your employment status?",
+                "input_type": "radio",
+                "choices": [
+                    {"id": "opt_1", "label": "Student"},
+                    {"id": "opt_2", "label": "Employed full-time"},
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "Employed full-time"
+    assert "ollama:reasoning" in data["reason"]
+    mock_ollama.choose_answer.assert_called_once()
+
+
+def test_answer_endpoint_use_laya_disabled(tmp_path) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = MagicMock()
+    mock_ollama.embed = AsyncMock(return_value=[1.0, 0.0])
+    mock_ollama.choose_answer = AsyncMock(
+        return_value=AnswerResponse(
+            answer="Employed full-time",
+            choice_id="opt_2",
+            confidence=0.88,
+            reason="ollama:reasoning matched fact:job",
+        )
+    )
+
+    mock_laya = MagicMock()
+
+    settings = Settings(db_path=tmp_path / "memory.sqlite", use_laya=False)
+    app = create_app(settings, ollama=mock_ollama, laya_solver=mock_laya)
+
+    with TestClient(app) as client:
+        client.app.state.store.upsert_fact(
+            Fact(key="job", value="Software Engineer", text="I work full-time.", source="profile"),
+            [1.0, 0.0],
+        )
+
+        response = client.post(
+            "/answer",
+            json={
+                "question_text": "What is your employment status?",
+                "input_type": "radio",
+                "choices": [
+                    {"id": "opt_1", "label": "Student"},
+                    {"id": "opt_2", "label": "Employed full-time"},
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    mock_laya.choose_answer.assert_not_called()
+    mock_ollama.choose_answer.assert_called_once()
+
+
+def test_answer_endpoint_laya_error_falls_back_to_ollama(tmp_path) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = MagicMock()
+    mock_ollama.embed = AsyncMock(return_value=[1.0, 0.0])
+    mock_ollama.choose_answer = AsyncMock(
+        return_value=AnswerResponse(
+            answer="Employed full-time",
+            choice_id="opt_2",
+            confidence=0.85,
+            reason="ollama:fallback",
+        )
+    )
+
+    mock_laya = MagicMock()
+    mock_laya.choose_answer.side_effect = RuntimeError("Laya engine failed")
+
+    settings = Settings(db_path=tmp_path / "memory.sqlite", use_laya=True)
+    app = create_app(settings, ollama=mock_ollama, laya_solver=mock_laya)
+
+    with TestClient(app) as client:
+        client.app.state.store.upsert_fact(
+            Fact(key="job", value="Software Engineer", text="I work full-time.", source="profile"),
+            [1.0, 0.0],
+        )
+
+        response = client.post(
+            "/answer",
+            json={
+                "question_text": "What is your employment status?",
+                "input_type": "radio",
+                "choices": [
+                    {"id": "opt_1", "label": "Student"},
+                    {"id": "opt_2", "label": "Employed full-time"},
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["answer"] == "Employed full-time"
+    assert "ollama:fallback" in data["reason"]
+    mock_ollama.choose_answer.assert_called_once()
+
+
+def test_answer_endpoint_cache_behavior(tmp_path) -> None:
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_ollama = MagicMock()
+    mock_ollama.embed = AsyncMock(return_value=[1.0, 0.0])
+    mock_ollama.choose_answer = AsyncMock()
+
+    mock_laya = MagicMock()
+    mock_laya.choose_answer.return_value = AnswerResponse(
+        answer="Employed full-time",
+        choice_id="opt_2",
+        confidence=0.90,
+        reason="laya:choice matched fact:job",
+    )
+
+    settings = Settings(db_path=tmp_path / "memory.sqlite", use_laya=True)
+    app = create_app(settings, ollama=mock_ollama, laya_solver=mock_laya)
+
+    with TestClient(app) as client:
+        client.app.state.store.upsert_fact(
+            Fact(key="job", value="Software Engineer", text="I work full-time.", source="profile"),
+            [1.0, 0.0],
+        )
+
+        payload = {
+            "question_text": "What is your employment status?",
+            "input_type": "radio",
+            "choices": [
+                {"id": "opt_1", "label": "Student"},
+                {"id": "opt_2", "label": "Employed full-time"},
+            ],
+        }
+        res1 = client.post("/answer", json=payload)
+        assert res1.status_code == 200
+        assert mock_laya.choose_answer.call_count == 1
+
+        # Second call should hit the in-memory cache
+        res2 = client.post("/answer", json=payload)
+        assert res2.status_code == 200
+        assert res2.json()["answer"] == "Employed full-time"
+        assert mock_laya.choose_answer.call_count == 1
+
