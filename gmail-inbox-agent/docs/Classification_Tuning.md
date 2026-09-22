@@ -84,6 +84,27 @@ Prefer conservative rules:
 - Say "archive only if confidence is high" for newsletters, promotions, and known automated senders.
 - Avoid broad rules like "archive everything from this domain" unless you are very sure.
 
+## System 1 Triage with Laya
+
+When `LLM_PROVIDER=hybrid` (default) or `LLM_PROVIDER=laya`, the agent uses [Laya](https://laya.convaiinnovations.com/) to perform sub-50ms reflex classification.
+
+Laya evaluates:
+- **`category`** (`choice`): work, family, money, appointment, receipt, newsletter, account, spam_or_promo, other.
+- **`importance`** (`choice`): important, normal, low.
+- **`should_archive`** (`noul`): calibrated probability P(archive).
+- **`should_highlight`** (`noul`): calibrated probability P(needs urgent attention).
+
+### Calibrated Confidence Tuning
+
+Laya outputs mathematically calibrated probabilities. You can tune the cutoff in `.env`:
+
+```text
+LAYA_CONFIDENCE_THRESHOLD=0.85
+```
+
+- **Higher (e.g. 0.90 - 0.95)**: More conservative. Only ultra-confident decisions are triaged instantly; more emails fall back to System 2 (OpenAI / Ollama).
+- **Lower (e.g. 0.75 - 0.80)**: More aggressive. Triages nearly all emails via Laya in <50ms with zero token cost.
+
 ## Current Limitations
 
 Rules are currently LLM guidance, not deterministic pre-processing. That means:

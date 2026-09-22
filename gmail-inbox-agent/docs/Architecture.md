@@ -12,7 +12,7 @@ flowchart TD
     CLI --> Graph["LangGraph workflow"]
     Graph --> GmailFetch["Gmail API: fetch inbox"]
     Graph --> MemoryRead["SQLite memory: reviewed IDs"]
-    Graph --> Classifier["LLM classifier"]
+    Graph --> Classifier["Classification Engine (Laya System 1 + LLM System 2)"]
     Graph --> Rules["config/rules.toml"]
     Graph --> GmailActions["Gmail API: thread labels and archive"]
     Graph --> MemoryWrite["SQLite memory: record review"]
@@ -29,14 +29,16 @@ flowchart TD
 
 ## LangGraph Workflow
 
-The agent runs a linear workflow today. Each node receives and returns `AgentState`.
+The agent runs a linear workflow today. Each node receives and returns `AgentState`. Within `classify_messages`, a two-tier triage architecture evaluates messages:
+1. **Tier 1 (Laya System 1, ~33ms)**: Evaluates `choice` (category), `choice` (importance), and `noul` (archive / highlight) with calibrated probabilities. High-confidence decisions are applied immediately.
+2. **Tier 2 (System 2 Fallback)**: For ambiguous or low-confidence decisions, the agent falls back to OpenAI / Ollama.
 
 ```mermaid
 flowchart LR
     A["load_config"] --> B["authenticate_gmail"]
     B --> C["fetch_inbox_messages"]
     C --> D["filter_unreviewed_messages"]
-    D --> E["classify_messages"]
+    D --> E["classify_messages (Laya + LLM)"]
     E --> F["apply_gmail_actions"]
     F --> G["record_memory"]
     G --> H["send_summary"]

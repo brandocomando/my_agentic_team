@@ -97,12 +97,15 @@ def filter_unreviewed_messages(state: AgentState) -> AgentState:
 
 def classify_messages(state: AgentState) -> AgentState:
     classifier = EmailClassifier(
-        provider=state.config.llm_provider if state.config else "openai",
+        provider=state.config.llm_provider if state.config else "hybrid",
         api_key=state.config.openai_api_key if state.config else "",
         openai_model=state.config.openai_model if state.config else "gpt-4.1-mini",
         ollama_model=state.config.ollama_model if state.config else "llama3.1:8b",
         ollama_base_url=state.config.ollama_base_url if state.config else "http://localhost:11434",
         rules_path=state.config.classification_rules_path if state.config else None,
+        laya_model_name=state.config.laya_model_name if state.config else "convaiinnovations/laya",
+        laya_subfolder=state.config.laya_subfolder if state.config else None,
+        laya_confidence_threshold=state.config.laya_confidence_threshold if state.config else 0.85,
     )
     processed = []
     for message in state.unreviewed_messages:

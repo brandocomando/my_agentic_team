@@ -15,6 +15,7 @@ from gmail_inbox_agent.labels import (
     REVIEWED_LABEL,
     normalize_labels,
 )
+from gmail_inbox_agent.llm.laya_classifier import LayaEmailClassifier
 from gmail_inbox_agent.llm.prompts import SYSTEM_PROMPT
 from gmail_inbox_agent.llm.rules import load_rules_text
 from gmail_inbox_agent.models import EmailClassification, EmailMessage
@@ -23,12 +24,15 @@ from gmail_inbox_agent.models import EmailClassification, EmailMessage
 class EmailClassifier:
     def __init__(
         self,
-        provider: Literal["openai", "ollama"] = "openai",
+        provider: Literal["openai", "ollama", "laya", "hybrid"] = "hybrid",
         api_key: str = "",
         openai_model: str = "gpt-4.1-mini",
         ollama_model: str = "llama3.1:8b",
         ollama_base_url: str = "http://localhost:11434",
         rules_path: Path | None = None,
+        laya_model_name: str = "convaiinnovations/laya",
+        laya_subfolder: str | None = None,
+        laya_confidence_threshold: float = 0.85,
     ) -> None:
         self.provider = provider
         self.api_key = api_key
@@ -37,8 +41,29 @@ class EmailClassifier:
         self.ollama_base_url = ollama_base_url.rstrip("/")
         self.client = OpenAI(api_key=api_key) if api_key else None
         self.rules_text = load_rules_text(rules_path) if rules_path else ""
+        self.laya_confidence_threshold = laya_confidence_threshold
+        self.laya_classifier = LayaEmailClassifier(
+            model_name=laya_model_name,
+            subfolder=laya_subfolder,
+            confidence_threshold=laya_confidence_threshold,
+        )
 
     def classify(self, message: EmailMessage) -> EmailClassification:
+        if self.provider == "laya":
+            return self.laya_classifier.classify(message)
+        if self.provider == "hybrid":
+            laya_result = self.laya_classifier.classify(message)
+            if laya_result.confidence >= self.laya_confidence_threshold:
+                return laya_result
+            # Fall back to System 2 when Laya confidence is below threshold
+            if self.client:
+                return self._classify_with_openai(message)
+            if self.provider == "hybrid" and self.ollama_base_url:
+                try:
+                    return self._classify_with_ollama(message)
+                except Exception:
+                    return laya_result
+            return laya_result
         if self.provider == "ollama":
             return self._classify_with_ollama(message)
         if self.provider == "openai" and self.client:
