@@ -55,7 +55,7 @@ In `hybrid` mode, Laya evaluates incoming emails in ~33ms. If confidence meets o
 
 ## OpenAI
 
-OpenAI is the default provider.
+OpenAI provides high-quality generative classification with structured output:
 
 ```text
 LLM_PROVIDER=openai

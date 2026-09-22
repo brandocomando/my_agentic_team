@@ -48,3 +48,16 @@ def test_archive_action_only_removes_inbox_label() -> None:
 
 def test_archive_requires_confidence() -> None:
     assert should_archive(make_processed(confidence=0.69)) is False
+
+
+def test_archive_prevented_when_should_highlight_true() -> None:
+    processed = make_processed(confidence=0.99, should_archive_value=True)
+    processed.classification.should_highlight = True
+    assert should_archive(processed) is False
+
+
+def test_archive_prevented_when_importance_important() -> None:
+    processed = make_processed(confidence=0.99, should_archive_value=True)
+    processed.classification.importance = "important"
+    assert should_archive(processed) is False
+

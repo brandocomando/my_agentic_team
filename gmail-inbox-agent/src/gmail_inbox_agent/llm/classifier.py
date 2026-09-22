@@ -58,10 +58,10 @@ class EmailClassifier:
             # Fall back to System 2 when Laya confidence is below threshold
             if self.client:
                 return self._classify_with_openai(message)
-            if self.provider == "hybrid" and self.ollama_base_url:
+            if self.ollama_base_url:
                 try:
                     return self._classify_with_ollama(message)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     return laya_result
             return laya_result
         if self.provider == "ollama":
