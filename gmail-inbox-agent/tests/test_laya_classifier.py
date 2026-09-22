@@ -184,6 +184,19 @@ def test_laya_classifier_model_and_subfolder_configuration(monkeypatch) -> None:
         preload=True,
     )
 
+    # 4. Custom bundled repo with subfolder="english": subfolder is preserved
+    mock_router_class.reset_mock()
+    classifier_custom = LayaEmailClassifier(
+        model_name="custom-org/custom-bundle",
+        subfolder="english",
+    )
+    router_custom = classifier_custom._ensure_router()
+    assert router_custom is mock_router_instance
+    mock_router_class.assert_called_with(
+        models={"english": ("custom-org/custom-bundle", "english")},
+        preload=True,
+    )
+
 
 def test_laya_classifier_heuristic_invoice_categorized_as_money() -> None:
     classifier = LayaEmailClassifier(router_instance=None)
