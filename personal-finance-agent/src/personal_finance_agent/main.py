@@ -50,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     categorize_parser = subparsers.add_parser("categorize", help="Categorize uncategorized transactions.")
     categorize_parser.add_argument("--month", required=True)
     categorize_parser.add_argument("--no-llm", action="store_true", help="Use rules only and skip Ollama fallback.")
+    categorize_parser.add_argument("--no-laya", action="store_true", help="Skip Laya System 1 categorization.")
     categorize_parser.add_argument("--retry-failed", action="store_true", help="Retry prior Ollama failure rows.")
     categorize_parser.add_argument("--web-search", action="store_true", help="Allow LLM fallback to search the web.")
     categorize_parser.add_argument(
@@ -70,6 +71,7 @@ def parse_args() -> argparse.Namespace:
     review_parser = subparsers.add_parser("review", help="Run monthly import, categorize, and review export.")
     review_parser.add_argument("--month", required=True)
     review_parser.add_argument("--no-llm", action="store_true")
+    review_parser.add_argument("--no-laya", action="store_true", help="Skip Laya System 1 categorization.")
     review_parser.add_argument("--retry-failed", action="store_true", help="Retry prior Ollama failure rows.")
     review_parser.add_argument("--web-search", action="store_true", help="Allow LLM fallback to search the web.")
     review_parser.add_argument(
@@ -99,6 +101,7 @@ def parse_args() -> argparse.Namespace:
     full_parser = subparsers.add_parser("full-run", help="Import, categorize, export review file, and report.")
     full_parser.add_argument("--month", required=True)
     full_parser.add_argument("--no-llm", action="store_true")
+    full_parser.add_argument("--no-laya", action="store_true", help="Skip Laya System 1 categorization.")
     full_parser.add_argument("--retry-failed", action="store_true", help="Retry prior Ollama failure rows.")
     full_parser.add_argument("--web-search", action="store_true", help="Allow LLM fallback to search the web.")
     full_parser.add_argument(
@@ -265,6 +268,7 @@ def main() -> None:
             rules,
             settings,
             use_llm=not args.no_llm,
+            use_laya=False if args.no_laya else None,
             retry_failed=args.retry_failed,
             refresh_source_categories=not args.no_source_refresh,
             refresh_existing=args.refresh_existing,
@@ -284,6 +288,7 @@ def main() -> None:
             rules,
             settings,
             use_llm=not args.no_llm,
+            use_laya=False if args.no_laya else None,
             retry_failed=args.retry_failed,
             refresh_source_categories=not args.no_source_refresh,
             refresh_existing=args.refresh_existing,
@@ -331,6 +336,7 @@ def main() -> None:
             rules,
             settings,
             use_llm=not args.no_llm,
+            use_laya=False if args.no_laya else None,
             retry_failed=args.retry_failed,
             refresh_source_categories=not args.no_source_refresh,
             refresh_existing=args.refresh_existing,
@@ -407,6 +413,7 @@ def run_categorization(
     rules,
     settings,
     use_llm: bool = True,
+    use_laya: bool | None = None,
     retry_failed: bool = False,
     refresh_source_categories: bool = True,
     refresh_existing: bool = False,
@@ -425,6 +432,10 @@ def run_categorization(
             refresh_existing=refresh_existing,
         )
     )
+    if not use_llm:
+        effective_use_laya = False if use_laya is None else use_laya
+    else:
+        effective_use_laya = settings.use_laya if use_laya is None else use_laya
     for tx in rows:
         result = categorize_transaction(
             conn,
@@ -435,6 +446,9 @@ def run_categorization(
             model=settings.ollama_model,
             base_url=settings.ollama_base_url,
             web_search_enabled=web_search_enabled,
+            use_laya=effective_use_laya,
+            laya_model=settings.laya_model_name,
+            laya_threshold=settings.laya_confidence_threshold,
         )
         update_transaction_category(conn, tx["id"], result)
     return len(rows)

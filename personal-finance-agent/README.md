@@ -1,8 +1,8 @@
 # Personal Finance Agent
 
-A local-first personal finance categorization and monthly review agent. It imports bank CSV exports, optionally imports Amazon/Target item CSVs, deduplicates transactions, runs a LangGraph categorization flow with deterministic rules and optional Ollama/web-search fallback, produces a needs-review CSV, and writes monthly Excel and Markdown reports.
+A local-first personal finance categorization and monthly review agent. It imports bank CSV exports, optionally imports Amazon/Target item CSVs, deduplicates transactions, runs a LangGraph categorization flow with deterministic rules, **Laya System 1 decision engine (~33ms)**, and optional Ollama/web-search fallback, produces a needs-review CSV, and writes monthly Excel and Markdown reports.
 
-The agent is intentionally conservative: rules and human corrections win before LLM guesses, raw imported descriptions stay unchanged, and private financial files remain ignored by Git.
+The agent is intentionally conservative: rules and human corrections win before model guesses, Laya provides calibrated sub-35ms classifications, and private financial files remain ignored by Git.
 
 ## Documentation
 
@@ -103,7 +103,10 @@ uv run python app.py report-combined
 uv run python app.py full-run --month 2026-06
 ```
 
-Use `--no-llm` with `categorize`, `review`, or `full-run` for a deterministic-only run.
+Use `--no-llm` with `categorize`, `review`, or `full-run` for a deterministic-only run (bypassing both Laya and Ollama).
+Use `--no-laya` to skip Laya System 1 categorization and proceed directly to Ollama fallback.
+
+Laya System 1 categorization is enabled by default (`USE_LAYA=true` in `.env`). You can customize `LAYA_CONFIDENCE_THRESHOLD` (default: `0.80`) and `LAYA_MODEL_NAME` (default: `english`) in `.env`.
 
 If rules change after transactions were already categorized, refresh existing machine-generated rule/source/fallback rows without touching human-reviewed or itemized rows:
 

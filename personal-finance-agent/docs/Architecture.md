@@ -6,11 +6,12 @@
 2. Transactions are normalized and deduplicated into SQLite.
 3. Amazon/Target item exports are imported from `imports/amazon/` and `imports/target/`.
 4. Learned merchant rules and `config/categories.yaml` deterministic rules run first.
-5. Source CSV categories, such as Empower categories, are mapped into budget buckets before LLM fallback.
-6. Unknown transactions optionally go to Ollama through the local HTTP API.
-7. Low-confidence rows are exported to `exports/review/<month>-needs-review.csv`.
-8. Human corrections update transactions, with optional merchant-rule learning.
-9. Monthly reports are exported as Excel and Markdown.
+5. Source CSV categories, such as Empower categories, are mapped into budget buckets before model fallback.
+6. Unclassified transactions pass to **Laya System 1** (`LayaTransactionCategorizer`, ~33ms) for fast non-autoregressive classification with calibrated probabilities.
+7. Low-confidence or unhandled transactions optionally go to Ollama (System 2) through the local HTTP API and web search.
+8. Low-confidence rows are exported to `exports/review/<month>-needs-review.csv`.
+9. Human corrections update transactions, with optional merchant-rule learning.
+10. Monthly reports are exported as Excel and Markdown.
 
 ## Storage
 
@@ -32,7 +33,13 @@ Normalizes noisy descriptions such as `AMZN Mktp US*X92KS02` to stable merchant 
 
 ### Transaction Categorizer
 
-Applies learned human rules, deterministic YAML rules, source CSV categories, and then optional Ollama fallback. For broad department-store merchants such as Amazon and Target, itemized matches still win first, but otherwise mapped source CSV categories are preferred over the generic low-confidence department-store rule. It validates LLM output against allowed categories and falls back to `Needs Review` when the response is invalid or Ollama is unavailable.
+Applies learned human rules, deterministic YAML rules, source CSV categories, **Laya System 1 decision engine**, and then optional Ollama fallback. For broad department-store merchants such as Amazon and Target, itemized matches still win first, but otherwise mapped source CSV categories are preferred over the generic low-confidence department-store rule.
+
+When deterministic rules do not match:
+1. **Laya System 1 (~33ms)**: Evaluates `choice` (category) and `noul` (needs_review) against calibrated probabilities. When confidence meets `LAYA_CONFIDENCE_THRESHOLD` (default: 0.80), the categorization completes immediately without external LLM latency. Can be skipped via `--no-laya` or `USE_LAYA=false`.
+2. **Ollama System 2**: Used only when Laya confidence is below threshold, Laya flags ambiguous items for review, or Laya is disabled. It validates LLM output against allowed categories and falls back to `Needs Review` when the response is invalid or Ollama is unavailable.
+
+Running with `--no-llm` bypasses both Laya System 1 and Ollama System 2 for a strictly rules-only deterministic run.
 
 ### Human Review
 
