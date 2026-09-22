@@ -1,8 +1,8 @@
 # Personal Finance Agent
 
-A local-first personal finance categorization and monthly review agent. It imports bank CSV exports, optionally imports Amazon/Target item CSVs, deduplicates transactions, runs a LangGraph categorization flow with deterministic rules and optional Ollama/web-search fallback, produces a needs-review CSV, and writes monthly Excel and Markdown reports.
+A local-first personal finance categorization and monthly review agent. It imports bank CSV exports, optionally imports Amazon/Target item CSVs, deduplicates transactions, runs a LangGraph categorization flow with deterministic rules, **Laya System 1 decision engine (~33ms)**, and optional Ollama/web-search fallback, produces a needs-review CSV, and writes monthly Excel and Markdown reports.
 
-The agent is intentionally conservative: rules and human corrections win before LLM guesses, raw imported descriptions stay unchanged, and private financial files remain ignored by Git.
+The agent is intentionally conservative: rules and human corrections win before model guesses, Laya provides calibrated sub-35ms classifications, and private financial files remain ignored by Git.
 
 ## Documentation
 

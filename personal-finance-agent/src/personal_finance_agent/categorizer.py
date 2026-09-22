@@ -7,6 +7,7 @@ from typing import Any, Literal, TypedDict
 from langgraph.graph import END, StateGraph
 
 from personal_finance_agent.categories import CATEGORIES, EXCLUDED_SOURCE_CATEGORIES, CategoryRule, map_source_category
+from personal_finance_agent.laya_categorizer import LayaTransactionCategorizer
 from personal_finance_agent.llm.ollama_client import call_ollama
 from personal_finance_agent.models import Categorization
 from personal_finance_agent.storage import find_merchant_rule
@@ -25,6 +26,10 @@ class CategorizationState(TypedDict, total=False):
     model: str
     base_url: str
     web_search_enabled: bool
+    use_laya: bool
+    laya_model: str
+    laya_threshold: float
+    laya_checked: bool
     result: Categorization
     llm_result: dict[str, Any]
     search_query: str
@@ -43,6 +48,9 @@ def categorize_transaction(
     model: str = "llama3.1:8b",
     base_url: str = "http://localhost:11434",
     web_search_enabled: bool = False,
+    use_laya: bool = True,
+    laya_model: str = "convaiinnovations/laya",
+    laya_threshold: float = 0.80,
 ) -> Categorization:
     state = _categorization_graph().invoke(
         {
@@ -54,6 +62,9 @@ def categorize_transaction(
             "model": model,
             "base_url": base_url,
             "web_search_enabled": web_search_enabled,
+            "use_laya": use_laya,
+            "laya_model": laya_model,
+            "laya_threshold": laya_threshold,
         }
     )
     return state.get(
@@ -74,6 +85,7 @@ def _categorization_graph():
     graph.add_node("learned_rule", _learned_rule_node)
     graph.add_node("source_category", _source_category_node)
     graph.add_node("deterministic_rules", _deterministic_rules_node)
+    graph.add_node("laya", _laya_node)
     graph.add_node("llm", _llm_node)
     graph.add_node("web_search", _web_search_node)
     graph.add_node("llm_with_web", _llm_with_web_node)
@@ -95,6 +107,7 @@ def _categorization_graph():
         {
             "done": END,
             "deterministic_rules": "deterministic_rules",
+            "laya": "laya",
             "llm": "llm",
             "fallback": "fallback",
         },
@@ -105,6 +118,18 @@ def _categorization_graph():
         {
             "done": END,
             "source_category": "source_category",
+            "laya": "laya",
+            "llm": "llm",
+            "fallback": "fallback",
+        },
+    )
+    graph.add_conditional_edges(
+        "laya",
+        _route_after_laya,
+        {
+            "done": END,
+            "llm": "llm",
+            "fallback": "fallback",
         },
     )
     graph.add_conditional_edges(
@@ -237,6 +262,21 @@ def _fallback_node(state: CategorizationState) -> CategorizationState:
     }
 
 
+def _laya_node(state: CategorizationState) -> CategorizationState:
+    output: CategorizationState = {"laya_checked": True}
+    try:
+        categorizer = LayaTransactionCategorizer(
+            model_name=str(state.get("laya_model", "convaiinnovations/laya")),
+            confidence_threshold=float(state.get("laya_threshold", 0.80)),
+        )
+        result = categorizer.categorize(state["tx"], threshold=float(state.get("laya_threshold", 0.80)))
+        if result and not result.needs_review:
+            output["result"] = result
+    except Exception as exc:  # noqa: BLE001
+        output["error"] = f"Laya categorization failed: {exc}"
+    return output
+
+
 def _route_after_learned_rule(
     state: CategorizationState,
 ) -> Literal["done", "source_category", "deterministic_rules"]:
@@ -248,17 +288,35 @@ def _route_after_learned_rule(
 
 def _route_after_source_category(
     state: CategorizationState,
-) -> Literal["done", "deterministic_rules", "llm", "fallback"]:
+) -> Literal["done", "deterministic_rules", "laya", "llm", "fallback"]:
     if state.get("result"):
         return "done"
     merchant = str(state["tx"]["normalized_merchant"]).upper()
     if merchant in LOW_CONFIDENCE_MERCHANTS and not state.get("deterministic_checked"):
         return "deterministic_rules"
+    if bool(state.get("use_laya", True)) and not state.get("laya_checked"):
+        return "laya"
     return "llm" if bool(state["use_llm"]) else "fallback"
 
 
-def _route_after_deterministic_rules(state: CategorizationState) -> Literal["done", "source_category"]:
-    return "done" if state.get("result") else "source_category"
+def _route_after_deterministic_rules(
+    state: CategorizationState,
+) -> Literal["done", "source_category", "laya", "llm", "fallback"]:
+    if state.get("result"):
+        return "done"
+    if not state.get("source_checked"):
+        return "source_category"
+    if bool(state.get("use_laya", True)) and not state.get("laya_checked"):
+        return "laya"
+    return "llm" if bool(state["use_llm"]) else "fallback"
+
+
+def _route_after_laya(
+    state: CategorizationState,
+) -> Literal["done", "llm", "fallback"]:
+    if state.get("result"):
+        return "done"
+    return "llm" if bool(state["use_llm"]) else "fallback"
 
 
 def _route_after_llm(state: CategorizationState) -> Literal["done", "web_search"]:
