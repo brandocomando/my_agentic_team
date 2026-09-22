@@ -81,7 +81,29 @@ class LayaEmailClassifier:
                         slot = self.subfolder
                     elif any(k in self.model_name for k in ("multi", "typed")):
                         slot = "multilingual" if "multi" in self.model_name else "typed-decisions"
-                    models_override = {slot: (self.model_name, self.subfolder)}
+
+                    # Determine effective subfolder:
+                    # 1. convaiinnovations/laya has English at the repo root (subfolder is None).
+                    # 2. Standalone variant repos (e.g. laya-multilingual) also host weights at the root.
+                    # 3. Custom bundled repositories preserve their subfolder (even if named "english").
+                    sub = self.subfolder
+                    if (
+                        self.model_name == "convaiinnovations/laya"
+                        and sub in ("english", "en", "default")
+                    ) or (
+                        sub
+                        and (
+                            self.model_name.rstrip("/").endswith(f"-{sub}")
+                            or self.model_name.rstrip("/").endswith(f"/{sub}")
+                            or (
+                                self.model_name.startswith("convaiinnovations/laya-")
+                                and slot in self.model_name
+                            )
+                        )
+                    ):
+                        sub = None
+
+                    models_override = {slot: (self.model_name, sub) if sub else self.model_name}
                     self._target_model = slot
 
                 self._router = Router(models=models_override, preload=True)
@@ -107,7 +129,12 @@ class LayaEmailClassifier:
         }
 
     def classify(self, message: EmailMessage) -> EmailClassification:
-        router = self._ensure_router()
+        try:
+            router = self._ensure_router()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to obtain Laya router: %s; falling back to heuristic.", exc)
+            router = None
+
         state = self.build_state(message)
 
         if router is not None:
