@@ -53,7 +53,7 @@ def categorize_transaction(
     base_url: str = "http://localhost:11434",
     web_search_enabled: bool = False,
     use_laya: bool | None = None,
-    laya_model: str = "convaiinnovations/laya",
+    laya_model: str = "english",
     laya_threshold: float = 0.80,
 ) -> Categorization:
     effective_use_laya = use_llm if use_laya is None else use_laya
@@ -271,7 +271,7 @@ def _laya_node(state: CategorizationState) -> CategorizationState:
     output: CategorizationState = {"laya_checked": True}
     try:
         categorizer = LayaTransactionCategorizer(
-            model_name=str(state.get("laya_model", "convaiinnovations/laya")),
+            model_name=str(state.get("laya_model", "english")),
             confidence_threshold=float(state.get("laya_threshold", 0.80)),
         )
         result = categorizer.categorize(state["tx"], threshold=float(state.get("laya_threshold", 0.80)))

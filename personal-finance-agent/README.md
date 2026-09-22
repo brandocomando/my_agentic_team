@@ -106,7 +106,7 @@ uv run python app.py full-run --month 2026-06
 Use `--no-llm` with `categorize`, `review`, or `full-run` for a deterministic-only run (bypassing both Laya and Ollama).
 Use `--no-laya` to skip Laya System 1 categorization and proceed directly to Ollama fallback.
 
-Laya System 1 categorization is enabled by default (`USE_LAYA=true` in `.env`). You can customize `LAYA_CONFIDENCE_THRESHOLD` (default: `0.80`) and `LAYA_MODEL_NAME` (default: `convaiinnovations/laya`) in `.env`.
+Laya System 1 categorization is enabled by default (`USE_LAYA=true` in `.env`). You can customize `LAYA_CONFIDENCE_THRESHOLD` (default: `0.80`) and `LAYA_MODEL_NAME` (default: `english`) in `.env`.
 
 If rules change after transactions were already categorized, refresh existing machine-generated rule/source/fallback rows without touching human-reviewed or itemized rows:
 

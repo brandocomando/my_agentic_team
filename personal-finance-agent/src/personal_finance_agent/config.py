@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     low_confidence_threshold: float = Field(default=0.8, alias="LOW_CONFIDENCE_THRESHOLD")
     web_search_enabled: bool = Field(default=False, alias="WEB_SEARCH_ENABLED")
     use_laya: bool = Field(default=True, alias="USE_LAYA")
-    laya_model_name: str = Field(default="convaiinnovations/laya", alias="LAYA_MODEL_NAME")
+    laya_model_name: str = Field(default="english", alias="LAYA_MODEL_NAME")
     laya_confidence_threshold: float = Field(default=0.80, alias="LAYA_CONFIDENCE_THRESHOLD")
 
 

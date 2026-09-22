@@ -24,7 +24,11 @@ def get_shared_router() -> Any | None:
         except ImportError:
             logger.info("laya package not installed; using heuristic fallback categorizer.")
             _SHARED_ROUTER = None
-        _SHARED_ROUTER_INITIALIZED = True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to initialize Laya Router: %s; using heuristic fallback categorizer.", exc)
+            _SHARED_ROUTER = None
+        finally:
+            _SHARED_ROUTER_INITIALIZED = True
     return _SHARED_ROUTER
 
 
@@ -33,6 +37,16 @@ def reset_shared_router() -> None:
     global _SHARED_ROUTER, _SHARED_ROUTER_INITIALIZED
     _SHARED_ROUTER = None
     _SHARED_ROUTER_INITIALIZED = False
+
+
+def _normalize_laya_model(model_name: str | None) -> str | None:
+    """Normalize user-supplied model name to a checkpoint recognized by Laya Router."""
+    if not model_name or str(model_name).strip().lower() in {"auto", "none", ""}:
+        return None
+    normalized = str(model_name).strip().lower()
+    if normalized in {"convaiinnovations/laya", "convaiinnovations/laya/multilingual"}:
+        return "multilingual" if "multilingual" in normalized else "english"
+    return model_name
 
 
 FINANCE_CATEGORY_CRITERIA: dict[str, str] = {
@@ -58,7 +72,7 @@ class LayaTransactionCategorizer:
 
     def __init__(
         self,
-        model_name: str = "convaiinnovations/laya",
+        model_name: str = "english",
         confidence_threshold: float = 0.80,
         router_instance: Any | None = None,
     ) -> None:
@@ -110,8 +124,9 @@ class LayaTransactionCategorizer:
                     },
                 }
                 predict_kwargs: dict[str, Any] = {}
-                if self.model_name:
-                    predict_kwargs["model"] = self.model_name
+                normalized_model = _normalize_laya_model(self.model_name)
+                if normalized_model is not None:
+                    predict_kwargs["model"] = normalized_model
                 res = router.predict(state, questions, **predict_kwargs)
                 return self.parse_prediction(res, tx, cutoff)
             except Exception as exc:  # noqa: BLE001

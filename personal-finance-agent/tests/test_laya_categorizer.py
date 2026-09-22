@@ -388,3 +388,54 @@ def test_run_categorization_forwards_settings(tmp_path) -> None:
         assert call_kwargs["laya_threshold"] == 0.85
 
     conn.close()
+
+
+def test_laya_categorizer_model_normalization() -> None:
+    from personal_finance_agent.laya_categorizer import _normalize_laya_model
+
+    assert _normalize_laya_model("convaiinnovations/laya") == "english"
+    assert _normalize_laya_model("convaiinnovations/laya/multilingual") == "multilingual"
+    assert _normalize_laya_model("auto") is None
+    assert _normalize_laya_model("") is None
+    assert _normalize_laya_model(None) is None
+    assert _normalize_laya_model("multilingual") == "multilingual"
+    assert _normalize_laya_model("typed-decisions") == "typed-decisions"
+
+    # Verify that LayaTransactionCategorizer with "convaiinnovations/laya" passes model="english" to router
+    mock_router = MagicMock()
+    mock_router.predict.return_value = {
+        "answers": {
+            "category": {"choice": "Groceries", "confidence": 0.95},
+            "needs_review": {"noul": 0.0},
+        },
+        "routing": {"model": "laya"},
+    }
+    categorizer = LayaTransactionCategorizer(
+        model_name="convaiinnovations/laya",
+        router_instance=mock_router,
+    )
+    tx = _make_fake_tx(normalized_merchant="SAFEWAY")
+    categorizer.categorize(tx)
+    assert mock_router.predict.call_count == 1
+    call_kwargs = mock_router.predict.call_args[1]
+    assert call_kwargs.get("model") == "english"
+
+
+def test_get_shared_router_marks_initialized_on_error() -> None:
+    from personal_finance_agent import laya_categorizer
+    from unittest.mock import patch
+
+    laya_categorizer.reset_shared_router()
+    try:
+        with patch("laya.Router", side_effect=RuntimeError("Offline network error")):
+            # First call raises RuntimeError inside get_shared_router, caught by broad exception handler
+            router1 = laya_categorizer.get_shared_router()
+            assert router1 is None
+            assert laya_categorizer._SHARED_ROUTER_INITIALIZED is True
+
+        # Second call should return None immediately WITHOUT calling Router again
+        with patch("laya.Router", side_effect=AssertionError("Should not be called again")):
+            router2 = laya_categorizer.get_shared_router()
+            assert router2 is None
+    finally:
+        laya_categorizer.reset_shared_router()
