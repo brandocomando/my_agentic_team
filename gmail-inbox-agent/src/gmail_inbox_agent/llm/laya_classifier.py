@@ -82,13 +82,19 @@ class LayaEmailClassifier:
                     elif any(k in self.model_name for k in ("multi", "typed")):
                         slot = "multilingual" if "multi" in self.model_name else "typed-decisions"
 
-                    # If model_name is already a standalone checkpoint repo corresponding to the slot,
-                    # its weights reside at the repo root (no subfolder).
+                    # Determine effective subfolder:
+                    # 1. English checkpoints reside at the repository root (subfolder is None).
+                    # 2. Standalone variant repos (e.g. laya-multilingual) also host weights at the root.
+                    # 3. Only the bundled repo (convaiinnovations/laya) uses non-None subfolders
+                    #    for non-English variants ("multilingual", "typed-decisions").
                     sub = self.subfolder
-                    if sub and (
-                        self.model_name.rstrip("/").endswith(f"-{sub}")
-                        or self.model_name.rstrip("/").endswith(f"/{sub}")
-                        or (slot in self.model_name and self.model_name != "convaiinnovations/laya")
+                    if sub in ("english", "en", "default") or (
+                        sub
+                        and (
+                            self.model_name.rstrip("/").endswith(f"-{sub}")
+                            or self.model_name.rstrip("/").endswith(f"/{sub}")
+                            or (slot in self.model_name and self.model_name != "convaiinnovations/laya")
+                        )
                     ):
                         sub = None
 

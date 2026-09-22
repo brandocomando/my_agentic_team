@@ -171,6 +171,19 @@ def test_laya_classifier_model_and_subfolder_configuration(monkeypatch) -> None:
         preload=True,
     )
 
+    # 3. Bundled checkpoint repo with subfolder="english": English weights reside at repo root
+    mock_router_class.reset_mock()
+    classifier_english = LayaEmailClassifier(
+        model_name="convaiinnovations/laya",
+        subfolder="english",
+    )
+    router_english = classifier_english._ensure_router()
+    assert router_english is mock_router_instance
+    mock_router_class.assert_called_with(
+        models={"english": "convaiinnovations/laya"},
+        preload=True,
+    )
+
 
 def test_laya_classifier_heuristic_invoice_categorized_as_money() -> None:
     classifier = LayaEmailClassifier(router_instance=None)
