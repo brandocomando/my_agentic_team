@@ -1,0 +1,8 @@
+[repository]
+owner = "brandocomando"
+name = "my_agentic_team"
+
+[native_security_sources]
+dependabot = true
+code_scanning = true
+secret_scanning = true
