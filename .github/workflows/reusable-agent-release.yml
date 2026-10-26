@@ -102,7 +102,7 @@ jobs:
 
       - name: Release ${{ inputs.release_name }}
         id: semantic
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@v8
         with:
           working_directory: ./${{ inputs.agent_dir }}
           tag_format: ${{ inputs.release_tag_format }}
